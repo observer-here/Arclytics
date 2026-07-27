@@ -1,0 +1,40 @@
+# deps
+node_modules
+.pnpm-store
+
+# builds
+dist
+build
+.turbo
+.vercel
+*.tsbuildinfo
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# test / coverage
+coverage
+.nyc_output
+
+# misc
+*.local
+.cache
+tmp
+temp

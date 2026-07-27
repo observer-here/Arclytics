@@ -1,0 +1,14 @@
+{
+  "name": "arclytics",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @arclytics/web dev",
+    "dev:web": "pnpm --filter @arclytics/web dev",
+    "build": "pnpm --filter @arclytics/web build",
+    "preview": "pnpm --filter @arclytics/web preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}

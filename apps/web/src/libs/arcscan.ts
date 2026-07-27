@@ -1,0 +1,100 @@
+const BASE =
+  import.meta.env.VITE_ARCSCAN_BASE_URL ??
+  (import.meta.env.DEV ? "/arcscan" : "https://testnet.arcscan.app/api/v2");
+
+const STATS =
+  import.meta.env.VITE_ARCSCAN_STATS_URL ??
+  (import.meta.env.DEV ? "/arcstats" : "https://testnet.arcscan.app/stats-service/api/v1");
+
+export type PageParams = Record<string, string | number> | null;
+
+export type Paged<T> = {
+  items: T[];
+  nextPageParams: PageParams;
+};
+
+async function get<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    cache: "no-store",
+    ...init,
+  });
+  if (!res.ok) throw new Error(`ArcScan ${path} -> ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+async function getStats<T>(path: string): Promise<T> {
+  const res = await fetch(`${STATS}${path}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`ArcStats ${path} -> ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
+function withParams(path: string, params?: PageParams) {
+  if (!params) return path;
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v == null) continue;
+    q.set(k, String(v));
+  }
+  const s = q.toString();
+  if (!s) return path;
+  return path.includes("?") ? `${path}&${s}` : `${path}?${s}`;
+}
+
+async function paged<T>(path: string, params?: PageParams): Promise<Paged<T>> {
+  const data = await get<{
+    items?: T[];
+    next_page_params?: Record<string, string | number> | null;
+  }>(withParams(path, params));
+  return {
+    items: data.items ?? [],
+    nextPageParams: data.next_page_params ?? null,
+  };
+}
+
+export const arcscan = {
+  stats: () => get<Record<string, unknown>>("/stats"),
+  txChart: () =>
+    get<{ chart_data: Array<{ date: string; transactions_count: number }> }>(
+      "/stats/charts/transactions",
+    ),
+  newAccountsChart: async () => {
+    const data = await getStats<{
+      chart: Array<{ date: string; value: string }>;
+    }>("/lines/newAccounts");
+    return (data.chart ?? []).map((d) => ({
+      date: d.date,
+      value: Number(d.value ?? 0),
+    }));
+  },
+  tokens: (type = "ERC-20", params?: PageParams) =>
+    paged<Record<string, unknown>>(`/tokens?type=${encodeURIComponent(type)}`, params),
+  token: (address: string) => get<Record<string, unknown>>(`/tokens/${address}`),
+  blocks: async (params?: PageParams) => {
+    if (params === undefined) {
+      return get<Array<Record<string, unknown>>>("/main-page/blocks");
+    }
+    return paged<Record<string, unknown>>("/blocks", params);
+  },
+  blocksPage: (params?: PageParams) => paged<Record<string, unknown>>("/blocks", params),
+  transactions: async (params?: PageParams) => {
+    if (params === undefined) {
+      const data = await get<{ items: Array<Record<string, unknown>> }>("/transactions");
+      return data.items ?? [];
+    }
+    return paged<Record<string, unknown>>("/transactions", params);
+  },
+  transactionsPage: (params?: PageParams) =>
+    paged<Record<string, unknown>>("/transactions", params),
+  search: (q: string) =>
+    get<Array<Record<string, unknown>>>(`/search/quick?q=${encodeURIComponent(q)}`),
+  addressTokens: (address: string) =>
+    get<{ items: Array<Record<string, unknown>> }>(`/addresses/${address}/tokens`),
+  addressCounters: (address: string) =>
+    get<Record<string, string>>(`/addresses/${address}/counters`),
+  address: (address: string) => get<Record<string, unknown>>(`/addresses/${address}`),
+  addressTokenTransfers: (address: string, params?: PageParams) =>
+    paged<Record<string, unknown>>(`/addresses/${address}/token-transfers`, params),
+  transaction: (hash: string) => get<Record<string, unknown>>(`/transactions/${hash}`),
+  smartContractCounters: () =>
+    get<Record<string, string>>("/smart-contracts/counters"),
+};
