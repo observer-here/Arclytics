@@ -1,6 +1,9 @@
-const API_BASE =
-  (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ||
-  (import.meta.env.DEV ? "/api" : "");
+const PROD_API = "https://arclytics-api.dartajamul108.workers.dev";
+
+const API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? "/api" : PROD_API)
+).replace(/\/$/, "");
 
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });

@@ -4,6 +4,9 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter @arclytics/web build",
   "outputDirectory": "apps/web/dist",
+  "env": {
+    "VITE_API_URL": "https://arclytics-api.dartajamul108.workers.dev"
+  },
   "rewrites": [
     {
       "source": "/((?!assets/).*)",
