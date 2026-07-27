@@ -1,9 +1,8 @@
 import { addresses } from "@arclytics/chain";
+import { getProtocolRankings, loadEcosystemFeed } from "@/libs/api";
 import { arcscan } from "@/libs/arcscan";
-import { getDashboardData, getProtocolRankings } from "@/libs/dashboard";
-import { ecoChangePct, recordEcoSnapshot } from "@/libs/ecoSnapshots";
+import { getDashboardData } from "@/libs/dashboard";
 import { prefetch } from "@/libs/queryCache";
-import { dayOverDayPct, lastCompleteValue, weightedChange } from "@/libs/seriesChange";
 import { paths } from "@/routes/paths";
 
 export async function loadDashboard() {
@@ -24,68 +23,7 @@ export async function loadDashboard() {
 }
 
 export async function loadEcosystem() {
-  const [rankings, statsRaw, addressChart, usdcVol, txnsFee, counters, ...stableTokens] =
-    await Promise.all([
-      getProtocolRankings().catch(() => []),
-      arcscan.stats().catch(() => ({}) as Record<string, unknown>),
-      arcscan.newAccountsChart().catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
-      arcscan.usdcVolumeChart().catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
-      arcscan.statsLine("txnsFee").catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
-      arcscan.statsCounters().catch(() => ({}) as Record<string, number>),
-      arcscan.token(addresses.usdc).catch(() => null),
-      arcscan.token(addresses.eurc).catch(() => null),
-      arcscan.token(addresses.usyc).catch(() => null),
-    ]);
-
-  const stableMcap = [addresses.usdc, addresses.eurc, addresses.usyc].reduce((s, _addr, i) => {
-    const t = stableTokens[i];
-    const raw = String(t?.total_supply ?? "0");
-    const decimals = Number(t?.decimals ?? 6);
-    const supply = Number(raw) / 10 ** decimals;
-    return s + (Number.isFinite(supply) ? supply : 0);
-  }, 0);
-
-  const spark = usdcVol.slice(-14).map((d) => d.value);
-  const rows = rankings.map((r) => ({
-    slug: r.slug,
-    name: r.name,
-    category: r.category,
-    tvlUsd: r.tvlUsd,
-    change24h: r.change24h,
-    change7d: r.change7d,
-    change1m: r.change1m,
-    volume24h: r.volume24h,
-    fees24h: r.fees24h,
-    age: r.age,
-  }));
-
-  const latestAddr = lastCompleteValue(addressChart) ?? 0;
-  const volume24h = rankings.reduce((s, r) => s + (r.volume24h ?? 0), 0);
-  const networkFees = lastCompleteValue(txnsFee) ?? counters.txnsFee24h ?? 0;
-  const fees24h = networkFees || rankings.reduce((s, r) => s + (r.fees24h ?? 0), 0);
-  const tvlUsd = rankings.reduce((s, r) => s + r.tvlUsd, 0);
-
-  recordEcoSnapshot({ volume24h, fees24h, protocols: rows.length, stableMcap });
-
-  return {
-    rows,
-    spark,
-    stats: {
-      tvlUsd,
-      tvlChange: weightedChange(rankings),
-      protocolChange: ecoChangePct("protocols", rows.length),
-      volume24h,
-      volumeChange: ecoChangePct("volume24h", volume24h) ?? dayOverDayPct(usdcVol),
-      fees24h,
-      feesChange: ecoChangePct("fees24h", fees24h) ?? dayOverDayPct(txnsFee),
-      activeUsers: latestAddr,
-      usersChange: dayOverDayPct(addressChart),
-      transactions: Number(counters.newTxns24h ?? statsRaw.transactions_today ?? 0),
-      txChange: undefined as number | undefined,
-      stableMcap,
-      stableChange: ecoChangePct("stableMcap", stableMcap),
-    },
-  };
+  return loadEcosystemFeed();
 }
 
 const routeLoaders: Record<string, () => Promise<unknown>> = {
@@ -94,14 +32,44 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   [paths.protocols]: () => getProtocolRankings().catch(() => []),
   [paths.rankings]: () => getProtocolRankings().catch(() => []),
   [paths.tokens]: async () => {
-    const data = await arcscan.tokens("ERC-20").catch(() => ({ items: [] }));
-    return (data.items ?? []).map((t) => ({
-      address: String(t.address_hash),
-      name: String(t.name ?? ""),
-      symbol: String(t.symbol ?? ""),
-      holdersCount: Number(t.holders_count ?? 0),
-      iconUrl: t.icon_url ? String(t.icon_url) : undefined,
-    }));
+    const { LEGIT_TOKENS } = await import("@/config/tokens");
+    const { arcscan } = await import("@/libs/arcscan");
+    const settled = await Promise.all(
+      LEGIT_TOKENS.map(async (meta) => {
+        const t = await arcscan.token(meta.address).catch(() => null);
+        if (!t || (t as { message?: string }).message) return null;
+        const address = String(t.address_hash ?? meta.address);
+        const name = String(t.name ?? "");
+        const symbol = String(t.symbol ?? "");
+        if (!name && !symbol) return null;
+        const rate = t.exchange_rate != null ? Number(t.exchange_rate) : null;
+        const price =
+          rate != null && Number.isFinite(rate) && rate > 0
+            ? rate
+            : meta.pegUsd
+              ? 1
+              : null;
+        const mcapRaw =
+          t.circulating_market_cap != null ? Number(t.circulating_market_cap) : null;
+        const vol = t.volume_24h != null ? Number(t.volume_24h) : null;
+        return {
+          address,
+          name,
+          symbol,
+          holders: Number(t.holders_count ?? 0),
+          iconUrl: t.icon_url ? String(t.icon_url) : undefined,
+          price,
+          change24h: price != null ? 0 : null,
+          change7d: price != null ? 0 : null,
+          marketCap:
+            mcapRaw != null && Number.isFinite(mcapRaw) && mcapRaw > 0 ? mcapRaw : null,
+          volume24h: vol != null && Number.isFinite(vol) ? vol : null,
+          category: meta.category,
+          protocol: meta.protocol,
+        };
+      }),
+    );
+    return settled.filter(Boolean);
   },
   [paths.nfts]: async () => {
     const data = await arcscan.tokens("ERC-721").catch(() => ({ items: [] }));
@@ -154,10 +122,10 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
 
 const cacheKeyByPath: Record<string, string> = {
   [paths.home]: "dashboard",
-  [paths.ecosystem]: "ecosystem",
-  [paths.protocols]: "protocol-rankings",
-  [paths.rankings]: "protocol-rankings",
-  [paths.tokens]: "tokens-erc20",
+  [paths.ecosystem]: "ecosystem-v8",
+  [paths.protocols]: "protocol-rankings-v8",
+  [paths.rankings]: "protocol-rankings-v8",
+  [paths.tokens]: "tokens-legit-v3",
   [paths.nfts]: "tokens-erc721",
   [paths.stablecoins]: "stablecoins",
   [paths.analytics]: "analytics-tx",

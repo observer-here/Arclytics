@@ -4,7 +4,7 @@ import { getProtocolRankings } from "@/libs/dashboard";
 
 export function ProtocolsPage() {
   const { data: rows, loading, error } = useAsyncData(
-    "protocol-rankings",
+    "protocol-rankings-v8",
     () => getProtocolRankings().catch(() => []),
   );
 

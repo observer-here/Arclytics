@@ -6,6 +6,7 @@ export type ProtocolCategory =
   | "rwa"
   | "stablecoin"
   | "derivatives"
+  | "payments"
   | "other";
 
 export type ContractRole =
@@ -16,6 +17,7 @@ export type ContractRole =
   | "lending_pool"
   | "gauge"
   | "token"
+  | "bridge"
   | "other";
 
 export interface ProtocolContract {
@@ -33,6 +35,8 @@ export interface ProtocolConfig {
   docs?: string;
   twitter?: string;
   discord?: string;
+  /** Protocol fee in basis points applied to 24h volume (e.g. 30 = 0.30%). */
+  feeBps?: number;
   contracts: ProtocolContract[];
   tvlTokens: `0x${string}`[];
 }

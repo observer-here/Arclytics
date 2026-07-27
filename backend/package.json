@@ -1,0 +1,24 @@
+{
+  "name": "@arclytics/backend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute arclytics --local --file=./schema.sql",
+    "db:init:remote": "wrangler d1 execute arclytics --remote --file=./schema.sql",
+    "ingest": "curl -X POST http://127.0.0.1:8787/v1/ingest"
+  },
+  "dependencies": {
+    "@arclytics/chain": "workspace:*",
+    "@arclytics/math": "workspace:*",
+    "@arclytics/protocols": "workspace:*",
+    "@arclytics/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250317.0",
+    "typescript": "^5.8.2",
+    "wrangler": "^4.14.0"
+  }
+}

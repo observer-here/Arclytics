@@ -119,7 +119,9 @@ export const arcscan = {
   search: (q: string) =>
     get<Array<Record<string, unknown>>>(`/search/quick?q=${encodeURIComponent(q)}`),
   addressTokens: (address: string) =>
-    get<{ items: Array<Record<string, unknown>> }>(`/addresses/${address}/tokens`),
+    get<{ items: Array<Record<string, unknown>> }>(
+      `/addresses/${address}/tokens?type=ERC-20`,
+    ),
   addressCounters: (address: string) =>
     get<Record<string, string>>(`/addresses/${address}/counters`),
   address: (address: string) => get<Record<string, unknown>>(`/addresses/${address}`),

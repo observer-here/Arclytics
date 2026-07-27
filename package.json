@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "pnpm --filter @arclytics/web dev",
     "dev:web": "pnpm --filter @arclytics/web dev",
+    "dev:api": "pnpm --filter @arclytics/backend dev",
+    "dev:all": "pnpm -r --parallel --filter @arclytics/backend --filter @arclytics/web dev",
+    "ingest": "pnpm --filter @arclytics/backend ingest",
     "build": "pnpm --filter @arclytics/web build",
     "preview": "pnpm --filter @arclytics/web preview"
   },

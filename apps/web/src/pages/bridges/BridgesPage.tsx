@@ -6,7 +6,7 @@ import { getProtocolRankings } from "@/libs/dashboard";
 import { shortHash, usd } from "@/utils/format";
 
 export function BridgesPage() {
-  const { data, loading, error } = useAsyncData("bridges", async () => {
+  const { data, loading, error } = useAsyncData("bridges-v2", async () => {
     const cctp = getProtocol("cctp");
     const rankings = await getProtocolRankings().catch(() => []);
     const tvl = rankings.find((r) => r.slug === "cctp");

@@ -31,6 +31,7 @@ const ROLE_LABEL: Record<string, string> = {
   lending_pool: "Lending",
   gauge: "Gauge",
   token: "Token",
+  bridge: "Bridge",
   other: "Core",
 };
 
@@ -92,7 +93,7 @@ function watchKey(slug: string) {
 export function ProtocolDetailPage() {
   const { slug = "" } = useParams();
   const { data, loading, error } = useAsyncData(
-    `protocol-detail:${slug}`,
+    `protocol-detail-v6:${slug}`,
     () => loadProtocolDetail(slug),
     [slug],
   );
@@ -336,7 +337,9 @@ export function ProtocolDetailPage() {
                       <tr key={p.pair}>
                         <td className="font-medium text-ink-800">{p.pair}</td>
                         <td>{usd(p.volume24h)}</td>
-                        <td className="text-emerald-600">{p.apr.toFixed(1)}%</td>
+                        <td className="text-emerald-600">
+                          {p.apr < 0.01 ? p.apr.toFixed(3) : p.apr < 1 ? p.apr.toFixed(2) : p.apr.toFixed(1)}%
+                        </td>
                       </tr>
                     ))
                   ) : (
@@ -459,7 +462,9 @@ export function ProtocolDetailPage() {
                   <tr key={p.pair}>
                     <td className="font-medium">{p.pair}</td>
                     <td>{usd(p.volume24h)}</td>
-                    <td className="text-emerald-600">{p.apr.toFixed(1)}%</td>
+                    <td className="text-emerald-600">
+                      {p.apr < 0.01 ? p.apr.toFixed(3) : p.apr < 1 ? p.apr.toFixed(2) : p.apr.toFixed(1)}%
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -507,7 +512,30 @@ export function ProtocolDetailPage() {
         </div>
       )}
 
-      {(tab === "Users" || tab === "Agents" || tab === "Tokenomics") && (
+      {tab === "Users" && (
+        <div className="grid gap-2 xl:grid-cols-3">
+          <div className="xl:col-span-2">
+            <AreaChartCard title="Active Users" data={data.activity.unique} color="#10b981" />
+          </div>
+          <div className="card p-2.5">
+            <div className="panel-title mb-2">Users</div>
+            <div className="divide-y divide-ink-100 text-[12px]">
+              <div className="flex justify-between py-1.5">
+                <span className="text-ink-400">Active (24h)</span>
+                <span className="font-medium text-ink-800">{compact(data.activeUsers)}</span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-ink-400">Peak (30d sample)</span>
+                <span className="font-medium text-ink-800">
+                  {compact(Math.max(...data.activity.unique.map((d) => d.value), 0))}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(tab === "Agents" || tab === "Tokenomics") && (
         <div className="card p-4 text-sm text-ink-400">
           {tab} data for {protocol.name} is coming soon.
         </div>

@@ -10,7 +10,6 @@ export type EcosystemFilterId =
   | "perps"
   | "lending"
   | "yield"
-  | "liquid_staking"
   | "derivatives"
   | "options"
   | "insurance"
@@ -18,6 +17,7 @@ export type EcosystemFilterId =
   | "gaming"
   | "nft"
   | "social"
+  | "payments"
   | "infra"
   | "other";
 
@@ -33,7 +33,6 @@ export const ECOSYSTEM_FILTERS: Array<{
   { id: "perps", label: "Perps", icon: Icons.Perps, match: ["derivatives"] },
   { id: "lending", label: "Lending", icon: Icons.Lending, match: ["lending"] },
   { id: "yield", label: "Yield", icon: Icons.Yield, match: ["yield"] },
-  { id: "liquid_staking", label: "Liquid Staking", icon: Icons.LiquidStaking, match: ["liquid_staking"] },
   { id: "derivatives", label: "Derivatives", icon: Icons.Activity, match: ["derivatives"] },
   { id: "options", label: "Options", icon: Icons.Options, match: ["options"] },
   { id: "insurance", label: "Insurance", icon: Icons.Insurance, match: ["insurance"] },
@@ -41,7 +40,8 @@ export const ECOSYSTEM_FILTERS: Array<{
   { id: "gaming", label: "Gaming", icon: Icons.Gaming, match: ["gaming"] },
   { id: "nft", label: "NFT", icon: Icons.Nfts, match: ["nft"] },
   { id: "social", label: "Social", icon: Icons.Social, match: ["social"] },
-  { id: "infra", label: "Infra", icon: Icons.Infra, match: ["infrastructure", "bridge", "other"] },
+  { id: "payments", label: "Payments", icon: Icons.Wallet, match: ["payments"] },
+  { id: "infra", label: "Infra", icon: Icons.Infra, match: ["infrastructure", "bridge"] },
   { id: "other", label: "Other", icon: Icons.Layers, match: ["other", "rwa", "stablecoin"] },
 ];
 
@@ -53,6 +53,7 @@ export const CATEGORY_PILL: Record<string, string> = {
   derivatives: "bg-violet-50 text-violet-700",
   stablecoin: "bg-teal-50 text-teal-700",
   rwa: "bg-orange-50 text-orange-700",
+  payments: "bg-blue-50 text-blue-700",
   other: "bg-ink-100 text-ink-600",
 };
 
@@ -64,5 +65,6 @@ export const CATEGORY_ACCENT: Record<string, string> = {
   derivatives: "#8b5cf6",
   stablecoin: "#14b8a6",
   rwa: "#f97316",
+  payments: "#2563eb",
   other: "#64748b",
 };

@@ -143,6 +143,21 @@ export const Icons = {
       <path d="M21 21l-4.3-4.3" />
     </Svg>
   ),
+  Download: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M12 3v12" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M5 21h14" />
+    </Svg>
+  ),
+  Refresh: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 12a8 8 0 0114.5-4.5" />
+      <path d="M20 4v5h-5" />
+      <path d="M20 12a8 8 0 01-14.5 4.5" />
+      <path d="M4 20v-5h5" />
+    </Svg>
+  ),
   Moon: (p: IconProps) => (
     <Svg {...p}>
       <path d="M21 14.5A8.5 8.5 0 119.5 3 7 7 0 0021 14.5z" />

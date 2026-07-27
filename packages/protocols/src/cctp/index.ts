@@ -12,14 +12,14 @@ export const cctp: ProtocolConfig = {
   contracts: [
     {
       address: addresses.cctp.tokenMessengerV2,
-      role: "other",
+      role: "bridge",
       label: "TokenMessengerV2",
     },
     {
       address: addresses.cctp.messageTransmitterV2,
-      role: "other",
+      role: "bridge",
       label: "MessageTransmitterV2",
     },
   ],
-  tvlTokens: [addresses.usdc],
+  tvlTokens: [addresses.usdc, addresses.eurc],
 };

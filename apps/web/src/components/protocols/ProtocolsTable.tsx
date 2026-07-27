@@ -24,8 +24,8 @@ export function ProtocolsTable({
         <table className="data-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Name</th>
+              <th className="w-7 !pr-0">#</th>
+              <th className="!pl-1.5">Name</th>
               <th>Category</th>
               <th className="text-right">TVL</th>
             </tr>
@@ -33,8 +33,8 @@ export function ProtocolsTable({
           <tbody>
             {filtered.map((r, i) => (
               <tr key={r.slug}>
-                <td className="text-ink-400">{i + 1}</td>
-                <td>
+                <td className="w-7 !pr-0 text-ink-400">{i + 1}</td>
+                <td className="!pl-1.5">
                   <Link to={`/protocols/${r.slug}`} className="font-medium text-ink-800 hover:text-arc-700">
                     {r.name}
                   </Link>

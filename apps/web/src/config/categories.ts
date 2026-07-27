@@ -7,6 +7,7 @@ export const PROTOCOL_CATEGORIES = [
   "rwa",
   "stablecoin",
   "derivatives",
+  "payments",
   "other",
 ] as const;
 
@@ -21,5 +22,6 @@ export const CATEGORY_LABELS: Record<ProtocolCategoryFilter, string> = {
   rwa: "RWA",
   stablecoin: "Stablecoins",
   derivatives: "Derivatives",
+  payments: "Payments",
   other: "Other",
 };

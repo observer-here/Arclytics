@@ -41,7 +41,7 @@ export function AppShell({
 
       <div className="min-w-0 flex-1">
         <Topbar onMenu={() => setOpen(true)} />
-        <div className="px-3 py-3 sm:px-4">{children}</div>
+        <div className="px-2 py-3 sm:px-2.5">{children}</div>
       </div>
     </div>
   );

@@ -1,0 +1,32 @@
+CREATE TABLE IF NOT EXISTS protocol_latest (
+  slug TEXT PRIMARY KEY,
+  payload TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS protocol_detail (
+  slug TEXT PRIMARY KEY,
+  payload TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS protocol_snaps (
+  slug TEXT NOT NULL,
+  day INTEGER NOT NULL,
+  tvl REAL NOT NULL DEFAULT 0,
+  volume REAL NOT NULL DEFAULT 0,
+  fees REAL NOT NULL DEFAULT 0,
+  users INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (slug, day)
+);
+
+CREATE TABLE IF NOT EXISTS eco_latest (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  payload TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);

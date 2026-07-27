@@ -1,9 +1,9 @@
+import { getProtocolRankings } from "./api";
 import { arcscan } from "./arcscan";
-import { getProtocolRankings } from "./protocolMetrics";
 import { growthFromAdded, lastCompleteValue, weightedChange } from "./seriesChange";
 
-export { getProtocolRankings } from "./protocolMetrics";
-export type { ProtocolRanking } from "./protocolMetrics";
+export { getProtocolRankings } from "./api";
+export type { ProtocolRanking } from "./api";
 
 export async function getDashboardData() {
   const [
@@ -29,10 +29,6 @@ export async function getDashboardData() {
   const stats = statsRaw as Record<string, unknown>;
   const contractCounters = contractCountersRaw as Record<string, string>;
   const totalTvl = rankings.reduce((s, r) => s + r.tvlUsd, 0);
-  const byCategory = rankings.reduce<Record<string, number>>((acc, r) => {
-    acc[r.category] = (acc[r.category] ?? 0) + r.tvlUsd;
-    return acc;
-  }, {});
 
   const totalTransactions = Number(stats.total_transactions ?? counters.totalTxns ?? 0);
   const totalAddresses = Number(stats.total_addresses ?? counters.totalAddresses ?? 0);
@@ -71,7 +67,10 @@ export async function getDashboardData() {
     addressChart,
     usdcVolumeChart,
     rankings,
-    byCategory,
+    byCategory: rankings.reduce<Record<string, number>>((acc, r) => {
+      acc[r.category] = (acc[r.category] ?? 0) + r.tvlUsd;
+      return acc;
+    }, {}),
     blocks: [] as Array<Record<string, unknown>>,
     transactions: [] as Array<Record<string, unknown>>,
   };

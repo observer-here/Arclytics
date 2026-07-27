@@ -31,8 +31,8 @@ export function TopProtocols({
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-[11px] text-ink-400">
-              <th className="pb-1 font-medium">#</th>
-              <th className="pb-1 font-medium">Protocol</th>
+              <th className="w-7 pb-1 pr-0 font-medium">#</th>
+              <th className="pb-1 pl-1.5 font-medium">Protocol</th>
               <th className="pb-1 font-medium">Category</th>
               <th className="pb-1 text-right font-medium">TVL</th>
             </tr>
@@ -40,13 +40,16 @@ export function TopProtocols({
           <tbody>
             {filtered.slice(0, 8).map((r, i) => (
               <tr key={r.slug} className="border-t border-ink-100">
-                <td className="py-1.5 text-ink-400">{i + 1}</td>
-                <td className="py-1.5">
-                  <Link to={`/protocols/${r.slug}`} className="flex items-center gap-1.5 font-medium text-ink-800">
-                    <span className="grid h-5 w-5 place-items-center rounded-full bg-arc-50 text-[10px] font-semibold text-arc-700">
+                <td className="w-7 py-1.5 pr-0 text-ink-400">{i + 1}</td>
+                <td className="py-1.5 pl-1.5">
+                  <Link
+                    to={`/protocols/${r.slug}`}
+                    className="inline-flex items-center gap-1.5 font-medium text-ink-800"
+                  >
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-arc-50 text-[10px] font-semibold text-arc-700">
                       {r.name.slice(0, 1)}
                     </span>
-                    {r.name}
+                    <span className="truncate text-left">{r.name}</span>
                   </Link>
                 </td>
                 <td className="py-1.5 capitalize text-ink-500">

@@ -50,17 +50,21 @@ function ChartHeader({
   sliced,
   range,
   onRange,
+  mode = "flow",
 }: {
   title: string;
   sliced: Point[];
   range: Range;
   onRange: (r: Range) => void;
+  mode?: "stock" | "flow";
 }) {
   const latest = sliced.length ? sliced[sliced.length - 1].value : 0;
-  const prev = sliced.length > 1 ? sliced[sliced.length - 2].value : latest;
-  const delta = prev ? ((latest - prev) / prev) * 100 : 0;
+  const firstIdx = sliced.findIndex((d) => d.value > 0);
+  const first = firstIdx >= 0 ? sliced[firstIdx].value : 0;
+  const delta = first > 0 ? ((latest - first) / first) * 100 : 0;
   const total = sliced.reduce((s, d) => s + d.value, 0);
   const up = delta >= 0;
+  const hasRange = firstIdx >= 0 && firstIdx < sliced.length - 1;
 
   return (
     <div className="mb-1.5 space-y-1">
@@ -72,11 +76,15 @@ function ChartHeader({
         <div className="text-lg font-semibold tracking-tight text-ink-900">
           {compact(latest)}
         </div>
-        <span className={`text-[11px] font-medium ${up ? "text-emerald-600" : "text-rose-600"}`}>
-          {up ? "+" : ""}
-          {delta.toFixed(1)}%
-        </span>
-        <span className="text-[11px] text-ink-400">sum {compact(total)}</span>
+        {hasRange && (
+          <span className={`text-[11px] font-medium ${up ? "text-emerald-600" : "text-rose-600"}`}>
+            {up ? "+" : ""}
+            {delta.toFixed(1)}%
+          </span>
+        )}
+        {mode === "flow" && total > 0 && (
+          <span className="text-[11px] text-ink-400">sum {compact(total)}</span>
+        )}
       </div>
     </div>
   );
@@ -164,7 +172,7 @@ export function AreaChartCard({
 
   return (
     <div className="card p-2.5">
-      <ChartHeader title={title} sliced={sliced} range={range} onRange={setRange} />
+      <ChartHeader title={title} sliced={sliced} range={range} onRange={setRange} mode="stock" />
       {!sliced.length ? (
         <div className="flex h-[110px] items-center justify-center text-xs text-ink-400">No data</div>
       ) : (

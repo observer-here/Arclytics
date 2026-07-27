@@ -9,6 +9,10 @@ build
 .vercel
 *.tsbuildinfo
 
+# Cloudflare local state
+.wrangler
+.dev.vars
+
 # env / secrets
 .env
 .env.*

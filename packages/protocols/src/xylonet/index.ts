@@ -6,8 +6,10 @@ export const xylonet: ProtocolConfig = {
   name: "XyloNet",
   category: "yield",
   description:
-    "XyloNet is a yield vault and LP protocol on Arc, optimizing USDC and EURC liquidity across vaults and pools.",
+    "Stablecoin-native DeFi on Arc: StableSwap AMM, CCTP bridge, liquidity pools, and ERC-4626 vaults for USDC and EURC.",
   website: "https://xylonet.xyz",
+  docs: "https://www.arc.io/blog/how-xylonet-is-building-stablecoin-defi-and-social-tipping-on-arc",
+  feeBps: 4,
   contracts: [
     {
       address: "0x240Eb85458CD41361bd8C3773253a1D78054f747",

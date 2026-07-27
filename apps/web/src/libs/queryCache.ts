@@ -50,3 +50,8 @@ export function fetchCache<T>(
 export function prefetch(key: string, loader: () => Promise<unknown>) {
   void fetchCache(key, loader).catch(() => undefined);
 }
+
+export function clearCache(key?: string) {
+  if (key) store.delete(key);
+  else store.clear();
+}
