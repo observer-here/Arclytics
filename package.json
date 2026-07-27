@@ -9,6 +9,7 @@
     "dev:all": "pnpm -r --parallel --filter @arclytics/backend --filter @arclytics/web dev",
     "ingest": "pnpm --filter @arclytics/backend ingest",
     "build": "pnpm --filter @arclytics/web build",
+    "vercel-build": "pnpm --filter @arclytics/web build && rm -rf dist && cp -r apps/web/dist dist",
     "preview": "pnpm --filter @arclytics/web preview"
   },
   "devDependencies": {

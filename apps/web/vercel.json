@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @arclytics/web build",
+  "buildCommand": "pnpm build",
   "outputDirectory": "dist",
   "env": {
     "VITE_API_URL": "https://arclytics-api.dartajamul108.workers.dev"
