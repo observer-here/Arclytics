@@ -121,7 +121,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
     arcscan.transactionsPage(null).then((d) => d.items).catch(() => []),
   networkMeta: async () => {
     const [blocks, stats] = await Promise.all([
-      arcscan.blocks().catch(() => [] as Array<Record<string, unknown>>),
+      arcscan.mainPageBlocks().catch(() => [] as Array<Record<string, unknown>>),
       arcscan.stats().catch(() => ({}) as Record<string, unknown>),
     ]);
     const latestBlock = (blocks[0]?.height ?? blocks[0]?.number ?? null) as

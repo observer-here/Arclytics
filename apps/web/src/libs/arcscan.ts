@@ -69,19 +69,11 @@ export const arcscan = {
   tokens: (type = "ERC-20", params?: PageParams) =>
     paged<Record<string, unknown>>(`/tokens?type=${encodeURIComponent(type)}`, params),
   token: (address: string) => get<Record<string, unknown>>(`/tokens/${address}`),
-  blocks: async (params?: PageParams) => {
-    if (params === undefined) {
-      return get<Array<Record<string, unknown>>>("/main-page/blocks");
-    }
-    return paged<Record<string, unknown>>("/blocks", params);
-  },
+  mainPageBlocks: () => get<Array<Record<string, unknown>>>("/main-page/blocks"),
   blocksPage: (params?: PageParams) => paged<Record<string, unknown>>("/blocks", params),
-  transactions: async (params?: PageParams) => {
-    if (params === undefined) {
-      const data = await get<{ items: Array<Record<string, unknown>> }>("/transactions");
-      return data.items ?? [];
-    }
-    return paged<Record<string, unknown>>("/transactions", params);
+  recentTransactions: async () => {
+    const data = await get<{ items: Array<Record<string, unknown>> }>("/transactions");
+    return data.items ?? [];
   },
   transactionsPage: (params?: PageParams) =>
     paged<Record<string, unknown>>("/transactions", params),

@@ -12,8 +12,8 @@ export async function getDashboardData() {
         chart_data: [] as Array<{ date: string; transactions_count: number }>,
       })),
       arcscan.newAccountsChart().catch(() => [] as Array<{ date: string; value: number }>),
-      arcscan.blocks().catch(() => [] as Array<Record<string, unknown>>),
-      arcscan.transactions().catch(() => [] as Array<Record<string, unknown>>),
+      arcscan.mainPageBlocks().catch(() => [] as Array<Record<string, unknown>>),
+      arcscan.recentTransactions().catch(() => [] as Array<Record<string, unknown>>),
       arcscan.smartContractCounters().catch(() => ({}) as Record<string, string>),
       getProtocolRankings().catch(() => []),
     ]);

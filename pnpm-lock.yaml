@@ -23,6 +23,9 @@ importers:
       '@arclytics/protocols':
         specifier: workspace:*
         version: link:../../packages/protocols
+      '@arclytics/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       react:
         specifier: ^19.0.0
         version: 19.2.8
