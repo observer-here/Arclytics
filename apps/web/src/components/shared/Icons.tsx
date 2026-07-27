@@ -303,6 +303,97 @@ export const Icons = {
       <path d="M12 7v10M9.5 9.5c.7-1 1.8-1.5 2.5-1.5 1.4 0 2.5.8 2.5 2s-1 1.8-2.5 2.2S9.5 13.2 9.5 14.7c0 1.3 1.2 2.3 2.5 2.3.9 0 1.9-.5 2.5-1.5" />
     </Svg>
   ),
+  Star: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.9 7.2 18l.9-5.4L4.2 8.7l5.4-.8L12 3z" />
+    </Svg>
+  ),
+  StarFilled: (p: IconProps) => (
+    <svg
+      width={p.size ?? 16}
+      height={p.size ?? 16}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={p.className}
+      aria-hidden
+    >
+      <path d="M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 15.9 7.2 18l.9-5.4L4.2 8.7l5.4-.8L12 3z" />
+    </svg>
+  ),
+  Filter: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M4 5h16l-6 7v5l-4 2v-7L4 5z" />
+    </Svg>
+  ),
+  More: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none" />
+    </Svg>
+  ),
+  Options: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </Svg>
+  ),
+  Insurance: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
+    </Svg>
+  ),
+  Predict: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </Svg>
+  ),
+  Gaming: (p: IconProps) => (
+    <Svg {...p}>
+      <rect x="2" y="7" width="20" height="11" rx="3" />
+      <path d="M7 12h.01M9.5 12h.01M8.25 10.5v3M15 11h3M16.5 9.5v3" />
+    </Svg>
+  ),
+  Social: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
+    </Svg>
+  ),
+  Globe: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 010 18 14 14 0 010-18z" />
+    </Svg>
+  ),
+  Docs: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M7 3h7l5 5v13a1 1 0 01-1 1H7a1 1 0 01-1-1V4a1 1 0 011-1z" />
+      <path d="M14 3v5h5M9 13h6M9 17h6" />
+    </Svg>
+  ),
+  Share: (p: IconProps) => (
+    <Svg {...p}>
+      <circle cx="18" cy="5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <path d="M8.2 10.8l7.6-4.6M8.2 13.2l7.6 4.6" />
+    </Svg>
+  ),
+  Verified: (p: IconProps) => (
+    <svg
+      width={p.size ?? 16}
+      height={p.size ?? 16}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={p.className}
+      aria-hidden
+    >
+      <path d="M12 2l2.4 1.2 2.6-.2.9 2.4 2.2 1.4-1.2 2.4.5 2.6-2.4.9-1.4 2.2-2.4-1.2-2.6.2-.9-2.4-2.2-1.4 1.2-2.4-.5-2.6L9.4 6.2 12 2zm-1.2 12.4l5.2-5.2-1.4-1.4-3.8 3.8-1.8-1.8-1.4 1.4 3.2 3.2z" />
+    </svg>
+  ),
   Logo: (p: IconProps) => (
     <svg
       width={p.size ?? 16}

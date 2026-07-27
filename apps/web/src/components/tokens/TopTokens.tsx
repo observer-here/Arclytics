@@ -1,10 +1,17 @@
 import { Link } from "react-router-dom";
+import { TokenIcon } from "@/components/shared/TokenIcon";
 import { compact } from "@/utils/format";
 
 export function TopTokens({
   rows,
 }: {
-  rows: Array<{ address: string; name: string; symbol: string; holdersCount: number }>;
+  rows: Array<{
+    address: string;
+    name: string;
+    symbol: string;
+    holdersCount: number;
+    iconUrl?: string;
+  }>;
 }) {
   return (
     <div className="card p-2.5">
@@ -26,10 +33,11 @@ export function TopTokens({
           {rows.slice(0, 8).map((r) => (
             <tr key={r.address} className="border-t border-ink-100">
               <td className="py-1.5">
-                <Link to={`/tokens/${r.address}`} className="flex items-center gap-1.5 font-medium text-ink-800">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-indigo-50 text-[10px] font-semibold text-indigo-700">
-                    {(r.symbol || "?").slice(0, 1)}
-                  </span>
+                <Link
+                  to={`/tokens/${r.address}`}
+                  className="flex items-center gap-1.5 font-medium text-ink-800"
+                >
+                  <TokenIcon src={r.iconUrl} symbol={r.symbol} size={20} />
                   <span className="truncate">{r.name || r.symbol}</span>
                 </Link>
               </td>

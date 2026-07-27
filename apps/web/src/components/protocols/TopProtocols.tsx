@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { paths } from "@/routes/paths";
+import { usd } from "@/utils/format";
 import { CategoryFilter } from "@/components/shared/CategoryFilter";
 import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categories";
-import { usd } from "@/utils/format";
+import { useMemo, useState } from "react";
 
 export function TopProtocols({
   rows,
@@ -19,7 +20,7 @@ export function TopProtocols({
     <div className="card p-2.5">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <div className="panel-title">Top Protocols</div>
-        <Link to="/protocols" className="text-[11px] font-medium text-arc-600 hover:text-arc-700">
+        <Link to={paths.ecosystem} className="text-[11px] font-medium text-arc-600 hover:text-arc-700">
           View all
         </Link>
       </div>

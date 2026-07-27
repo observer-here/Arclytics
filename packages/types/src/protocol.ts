@@ -28,8 +28,11 @@ export interface ProtocolConfig {
   slug: string;
   name: string;
   category: ProtocolCategory;
+  description?: string;
   website?: string;
+  docs?: string;
   twitter?: string;
+  discord?: string;
   contracts: ProtocolContract[];
   tvlTokens: `0x${string}`[];
 }

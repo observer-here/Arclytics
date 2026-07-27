@@ -1,10 +1,17 @@
 import { Link } from "react-router-dom";
+import { TokenIcon } from "@/components/shared/TokenIcon";
 import { compact } from "@/utils/format";
 
 export function StablecoinsTable({
   rows,
 }: {
-  rows: Array<{ address: string; name: string; symbol: string; holders: number }>;
+  rows: Array<{
+    address: string;
+    name: string;
+    symbol: string;
+    holders: number;
+    iconUrl?: string;
+  }>;
 }) {
   const total = rows.reduce((s, r) => s + r.holders, 0) || 1;
 
@@ -28,10 +35,16 @@ export function StablecoinsTable({
           {rows.map((r) => (
             <tr key={r.address} className="border-t border-ink-100">
               <td className="py-1.5">
-                <Link to={`/tokens/${r.address}`} className="font-medium text-ink-800">
-                  {r.symbol}
+                <Link
+                  to={`/tokens/${r.address}`}
+                  className="inline-flex items-center gap-1.5 font-medium text-ink-800"
+                >
+                  <TokenIcon src={r.iconUrl} symbol={r.symbol} size={18} />
+                  <span>
+                    {r.symbol}
+                    <div className="text-[10px] font-normal text-ink-400">{r.name}</div>
+                  </span>
                 </Link>
-                <div className="text-[10px] text-ink-400">{r.name}</div>
               </td>
               <td className="py-1.5">{compact(r.holders)}</td>
               <td className="py-1.5 text-right font-medium">

@@ -91,7 +91,7 @@ export function RecentTransactions() {
     <div className="card p-2.5">
       <div className="mb-1.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="panel-title">Recent Transactions</div>
+          <div className="panel-title">Latest Transactions</div>
           <span
             className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
               live ? "bg-emerald-50 text-emerald-600" : "bg-ink-100 text-ink-400"

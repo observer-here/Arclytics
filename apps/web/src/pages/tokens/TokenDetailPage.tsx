@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { TokenIcon } from "@/components/shared/TokenIcon";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { arcscan } from "@/libs/arcscan";
 import { compact } from "@/utils/format";
@@ -22,13 +23,21 @@ export function TokenDetailPage() {
     );
   }
 
+  const symbol = String(token.symbol ?? "");
+  const iconUrl = token.icon_url ? String(token.icon_url) : undefined;
+
   return (
     <div className="space-y-2.5">
       <div className="card p-4">
-        <div className="text-lg font-semibold text-ink-900">
-          {String(token.name)} ({String(token.symbol)})
+        <div className="flex items-center gap-3">
+          <TokenIcon src={iconUrl} symbol={symbol} size={40} />
+          <div>
+            <div className="text-lg font-semibold text-ink-900">
+              {String(token.name)} ({symbol})
+            </div>
+            <div className="mt-0.5 font-mono text-[11px] text-ink-400">{address}</div>
+          </div>
         </div>
-        <div className="mt-0.5 font-mono text-[11px] text-ink-400">{address}</div>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="card p-4">

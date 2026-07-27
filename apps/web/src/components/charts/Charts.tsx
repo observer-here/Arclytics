@@ -31,8 +31,17 @@ function RangeButtons({
 
 function useRangeData(data: Point[], range: Range) {
   return useMemo(() => {
-    const n = range === "7D" ? 7 : range === "30D" ? 30 : range === "90D" ? 90 : data.length;
-    return data.slice(-n);
+    const n =
+      range === "7D"
+        ? 7
+        : range === "30D"
+          ? 30
+          : range === "90D"
+            ? 90
+            : range === "1Y"
+              ? 365
+              : data.length;
+    return data.slice(-Math.min(n, data.length));
   }, [data, range]);
 }
 
@@ -209,6 +218,145 @@ export function AreaChartCard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+export function DonutChart({
+  title,
+  slices,
+  colors = ["#3b82f6", "#8b5cf6", "#f97316", "#10b981", "#06b6d4"],
+}: {
+  title: string;
+  slices: Array<{ label: string; value: number }>;
+  colors?: string[];
+}) {
+  const total = slices.reduce((s, d) => s + d.value, 0) || 1;
+  const r = 42;
+  const c = 2 * Math.PI * r;
+  let offset = 0;
+  const arcs = slices.map((s, i) => {
+    const len = (s.value / total) * c;
+    const dash = `${len} ${c - len}`;
+    const o = offset;
+    offset += len;
+    return { ...s, dash, o, color: colors[i % colors.length], pct: (s.value / total) * 100 };
+  });
+
+  return (
+    <div className="card p-2.5">
+      <div className="panel-title mb-2">{title}</div>
+      {!slices.length ? (
+        <div className="flex h-[140px] items-center justify-center text-xs text-ink-400">No data</div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <svg width="110" height="110" viewBox="0 0 110 110" className="shrink-0">
+            <g transform="translate(55,55) rotate(-90)">
+              {arcs.map((a) => (
+                <circle
+                  key={a.label}
+                  r={r}
+                  fill="none"
+                  stroke={a.color}
+                  strokeWidth="14"
+                  strokeDasharray={a.dash}
+                  strokeDashoffset={-a.o}
+                />
+              ))}
+            </g>
+            <text x="55" y="52" textAnchor="middle" className="fill-ink-400 text-[9px]">
+              Total
+            </text>
+            <text x="55" y="66" textAnchor="middle" className="fill-ink-900 text-[11px] font-semibold">
+              {compact(total)}
+            </text>
+          </svg>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            {arcs.map((a) => (
+              <div key={a.label} className="flex items-center justify-between gap-2 text-[11px]">
+                <span className="flex min-w-0 items-center gap-1.5 text-ink-600">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: a.color }} />
+                  <span className="truncate">{a.label}</span>
+                </span>
+                <span className="shrink-0 font-medium text-ink-800">{a.pct.toFixed(1)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function MultiLineChart({
+  title,
+  series,
+}: {
+  title: string;
+  series: Array<{ label: string; color: string; data: Point[] }>;
+}) {
+  const [range, setRange] = useState<Range>("30D");
+  const n =
+    range === "7D"
+      ? 7
+      : range === "30D"
+        ? 30
+        : range === "90D"
+          ? 90
+          : range === "1Y"
+            ? 365
+            : Number.POSITIVE_INFINITY;
+  const sliced = series.map((s) => ({
+    ...s,
+    data: n === Number.POSITIVE_INFINITY ? s.data : s.data.slice(-Math.min(n, s.data.length)),
+  }));
+  const max = Math.max(...sliced.flatMap((s) => s.data.map((d) => d.value)), 1);
+  const w = 520;
+  const h = 120;
+  const pad = 4;
+
+  return (
+    <div className="card p-2.5">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <div className="panel-title">{title}</div>
+        <RangeButtons range={range} onChange={setRange} />
+      </div>
+      <div className="mb-1.5 flex flex-wrap gap-2">
+        {sliced.map((s) => (
+          <span key={s.label} className="flex items-center gap-1 text-[10px] text-ink-500">
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
+            {s.label}
+          </span>
+        ))}
+      </div>
+      <div className="flex gap-1">
+        <YAxis max={max} h={h} />
+        <svg viewBox={`0 0 ${w} ${h}`} className="h-[120px] w-full" preserveAspectRatio="none">
+          {[0.25, 0.5, 0.75].map((t) => (
+            <line
+              key={t}
+              x1={pad}
+              x2={w - pad}
+              y1={h - pad - t * (h - pad * 2)}
+              y2={h - pad - t * (h - pad * 2)}
+              stroke="#e5e7eb"
+              strokeWidth="1"
+            />
+          ))}
+          {sliced.map((s) => {
+            const line = s.data
+              .map((d, i) => {
+                const x = pad + (i / Math.max(s.data.length - 1, 1)) * (w - pad * 2);
+                const y = h - pad - (d.value / max) * (h - pad * 2);
+                return `${x},${y}`;
+              })
+              .join(" ");
+            return (
+              <polyline key={s.label} points={line} fill="none" stroke={s.color} strokeWidth="2" />
+            );
+          })}
+        </svg>
+      </div>
     </div>
   );
 }

@@ -18,7 +18,8 @@ export function DashboardPage() {
   if (!loaded) return null;
 
   const { data, topTokens } = loaded;
-  const spark = (data.txChart ?? []).slice(-14).map((d) => d.transactions_count);
+  const txSpark = (data.txChart ?? []).slice(-14).map((d) => d.transactions_count);
+  const addrSpark = (data.addressChart ?? []).slice(-14).map((d) => d.value);
   const chartSeries = (data.txChart ?? [])
     .slice()
     .reverse()
@@ -27,23 +28,27 @@ export function DashboardPage() {
     date: d.date,
     value: d.value,
   }));
+  const usdcVolumeSeries = (data.usdcVolumeChart ?? []).map((d) => ({
+    date: d.date,
+    value: d.value,
+  }));
   const tps = data.stats.transactionsToday > 0 ? data.stats.transactionsToday / 86_400 : undefined;
 
   return (
     <div className="space-y-2.5">
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Total Value Locked" value={usd(data.stats.tvlUsd)} icon={<Icons.Tvl size={13} />} series={spark} color="#2563eb" />
-        <StatCard label="Total Transactions" value={compact(data.stats.totalTransactions)} icon={<Icons.Tx size={13} />} series={spark} color="#8b5cf6" />
-        <StatCard label="Active Addresses" value={compact(data.stats.totalAddresses)} icon={<Icons.Users size={13} />} series={spark} color="#06b6d4" />
-        <StatCard label="Total Blocks" value={compact(data.stats.totalBlocks)} icon={<Icons.Blocks size={13} />} series={spark} color="#6366f1" />
-        <StatCard label="Gas Used (24h)" value={compact(data.stats.gasUsedToday)} icon={<Icons.Gas size={13} />} series={spark} color="#f59e0b" />
-        <StatCard label="Total Contracts" value={compact(data.stats.totalContracts)} icon={<Icons.Contracts size={13} />} series={spark} color="#10b981" />
+        <StatCard label="Total Value Locked" value={usd(data.stats.tvlUsd)} change={data.stats.tvlChange} icon={<Icons.Tvl size={13} />} color="#2563eb" />
+        <StatCard label="Total Transactions" value={compact(data.stats.totalTransactions)} change={data.stats.txChange} icon={<Icons.Tx size={13} />} series={txSpark} color="#8b5cf6" />
+        <StatCard label="Total Addresses" value={compact(data.stats.totalAddresses)} change={data.stats.addressChange} icon={<Icons.Users size={13} />} series={addrSpark} color="#06b6d4" />
+        <StatCard label="Total Blocks" value={compact(data.stats.totalBlocks)} change={data.stats.blockChange} icon={<Icons.Blocks size={13} />} color="#6366f1" />
+        <StatCard label="Gas Used (24h)" value={compact(data.stats.gasUsedToday)} change={data.stats.gasChange} icon={<Icons.Gas size={13} />} color="#f59e0b" />
+        <StatCard label="Total Contracts" value={compact(data.stats.totalContracts)} change={data.stats.contractChange} icon={<Icons.Contracts size={13} />} color="#10b981" />
       </div>
 
       <div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
         <AreaChartCard title="New Addresses" data={addressSeries} color="#2563eb" />
         <BarChartCard title="Transactions (Daily)" data={chartSeries} color="#8b5cf6" />
-        <BarChartCard title="Volume Proxy" data={chartSeries} color="#06b6d4" />
+        <BarChartCard title="USDC Volume" data={usdcVolumeSeries} color="#06b6d4" />
       </div>
 
       <div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">

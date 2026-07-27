@@ -59,12 +59,51 @@ export const arcscan = {
     ),
   newAccountsChart: async () => {
     const data = await getStats<{
-      chart: Array<{ date: string; value: string }>;
+      chart: Array<{ date: string; value: string; is_approximate?: boolean }>;
     }>("/lines/newAccounts");
     return (data.chart ?? []).map((d) => ({
       date: d.date,
       value: Number(d.value ?? 0),
+      approx: Boolean(d.is_approximate),
     }));
+  },
+  /** Daily USDC transfer count (native coin) — used as network volume proxy. */
+  usdcVolumeChart: async () => {
+    const data = await getStats<{
+      chart: Array<{ date: string; value: string; is_approximate?: boolean }>;
+    }>("/lines/newNativeCoinTransfers");
+    return (data.chart ?? []).map((d) => ({
+      date: d.date,
+      value: Number(d.value ?? 0),
+      approx: Boolean(d.is_approximate),
+    }));
+  },
+  statsLine: async (name: string) => {
+    const data = await getStats<{
+      chart: Array<{ date: string; value: string; is_approximate?: boolean }>;
+    }>(`/lines/${encodeURIComponent(name)}`);
+    return (data.chart ?? []).map((d) => ({
+      date: d.date,
+      value: Number(d.value ?? 0),
+      approx: Boolean(d.is_approximate),
+    }));
+  },
+  statsCounters: async () => {
+    const data = await getStats<{
+      counters: Array<{ id: string; value: string; title?: string }>;
+    }>("/counters");
+    return Object.fromEntries(
+      (data.counters ?? []).map((c) => [c.id, Number(c.value ?? 0)]),
+    ) as Record<string, number>;
+  },
+  statsPageContracts: async () => {
+    const data = await getStats<Record<string, { value?: string } | null>>("/pages/contracts");
+    return {
+      total: Number(data.total_contracts?.value ?? 0),
+      new24h: Number(data.new_contracts_24h?.value ?? 0),
+      verified: Number(data.total_verified_contracts?.value ?? 0),
+      verifiedNew24h: Number(data.new_verified_contracts_24h?.value ?? 0),
+    };
   },
   tokens: (type = "ERC-20", params?: PageParams) =>
     paged<Record<string, unknown>>(`/tokens?type=${encodeURIComponent(type)}`, params),
@@ -86,6 +125,8 @@ export const arcscan = {
   address: (address: string) => get<Record<string, unknown>>(`/addresses/${address}`),
   addressTokenTransfers: (address: string, params?: PageParams) =>
     paged<Record<string, unknown>>(`/addresses/${address}/token-transfers`, params),
+  addressTransactions: (address: string, params?: PageParams) =>
+    paged<Record<string, unknown>>(`/addresses/${address}/transactions`, params),
   transaction: (hash: string) => get<Record<string, unknown>>(`/transactions/${hash}`),
   smartContractCounters: () =>
     get<Record<string, string>>("/smart-contracts/counters"),

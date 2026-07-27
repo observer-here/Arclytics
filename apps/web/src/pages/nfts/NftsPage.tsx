@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { PageNav } from "@/components/shared/PageNav";
+import { TokenIcon } from "@/components/shared/TokenIcon";
 import { usePagedList } from "@/hooks/usePagedList";
 import { arcscan, type PageParams } from "@/libs/arcscan";
 import { compact } from "@/utils/format";
@@ -29,6 +30,7 @@ export function NftsPage() {
     name: String(t.name ?? ""),
     symbol: String(t.symbol ?? ""),
     holdersCount: Number(t.holders_count ?? 0),
+    iconUrl: t.icon_url ? String(t.icon_url) : undefined,
   }));
 
   return (
@@ -48,8 +50,9 @@ export function NftsPage() {
                 <td>
                   <Link
                     to={`/tokens/${r.address}`}
-                    className="font-medium text-ink-800 hover:text-arc-700"
+                    className="inline-flex items-center gap-2 font-medium text-ink-800 hover:text-arc-700"
                   >
+                    <TokenIcon src={r.iconUrl} symbol={r.symbol} size={22} />
                     {r.name || shortName(r.address)}
                   </Link>
                 </td>

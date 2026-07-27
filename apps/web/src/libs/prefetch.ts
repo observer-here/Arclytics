@@ -1,37 +1,51 @@
 import { addresses } from "@arclytics/chain";
 import { arcscan } from "@/libs/arcscan";
 import { getDashboardData, getProtocolRankings } from "@/libs/dashboard";
+import { ecoChangePct, recordEcoSnapshot } from "@/libs/ecoSnapshots";
 import { prefetch } from "@/libs/queryCache";
+import { dayOverDayPct, lastCompleteValue, weightedChange } from "@/libs/seriesChange";
 import { paths } from "@/routes/paths";
 
 export async function loadDashboard() {
-  const data = await getDashboardData();
-  const tokens = await arcscan.tokens("ERC-20").catch(() => ({
-    items: [] as Array<Record<string, unknown>>,
-  }));
+  const [data, tokens] = await Promise.all([
+    getDashboardData(),
+    arcscan.tokens("ERC-20").catch(() => ({
+      items: [] as Array<Record<string, unknown>>,
+    })),
+  ]);
   const topTokens = (tokens.items ?? []).slice(0, 10).map((t) => ({
     address: String(t.address_hash),
     name: String(t.name ?? ""),
     symbol: String(t.symbol ?? ""),
     holdersCount: Number(t.holders_count ?? 0),
+    iconUrl: t.icon_url ? String(t.icon_url) : undefined,
   }));
   return { data, topTokens };
 }
 
 export async function loadEcosystem() {
-  const [rankings, statsRaw, txChart, addressChart] = await Promise.all([
-    getProtocolRankings().catch(() => []),
-    arcscan.stats().catch(() => ({}) as Record<string, unknown>),
-    arcscan.txChart().catch(() => ({
-      chart_data: [] as Array<{ date: string; transactions_count: number }>,
-    })),
-    arcscan.newAccountsChart().catch(() => [] as Array<{ date: string; value: number }>),
-  ]);
-  const spark = (txChart.chart_data ?? [])
-    .slice()
-    .reverse()
-    .slice(-14)
-    .map((d) => d.transactions_count);
+  const [rankings, statsRaw, addressChart, usdcVol, txnsFee, counters, ...stableTokens] =
+    await Promise.all([
+      getProtocolRankings().catch(() => []),
+      arcscan.stats().catch(() => ({}) as Record<string, unknown>),
+      arcscan.newAccountsChart().catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
+      arcscan.usdcVolumeChart().catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
+      arcscan.statsLine("txnsFee").catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
+      arcscan.statsCounters().catch(() => ({}) as Record<string, number>),
+      arcscan.token(addresses.usdc).catch(() => null),
+      arcscan.token(addresses.eurc).catch(() => null),
+      arcscan.token(addresses.usyc).catch(() => null),
+    ]);
+
+  const stableMcap = [addresses.usdc, addresses.eurc, addresses.usyc].reduce((s, _addr, i) => {
+    const t = stableTokens[i];
+    const raw = String(t?.total_supply ?? "0");
+    const decimals = Number(t?.decimals ?? 6);
+    const supply = Number(raw) / 10 ** decimals;
+    return s + (Number.isFinite(supply) ? supply : 0);
+  }, 0);
+
+  const spark = usdcVol.slice(-14).map((d) => d.value);
   const rows = rankings.map((r) => ({
     slug: r.slug,
     name: r.name,
@@ -44,31 +58,32 @@ export async function loadEcosystem() {
     fees24h: r.fees24h,
     age: r.age,
   }));
-  const latestAddr = addressChart.length ? addressChart[addressChart.length - 1].value : 0;
-  const prevAddr =
-    addressChart.length > 1 ? addressChart[addressChart.length - 2].value : latestAddr;
-  const usersChange = prevAddr ? ((latestAddr - prevAddr) / prevAddr) * 100 : undefined;
-  const txToday = Number(statsRaw.transactions_today ?? 0);
-  const txTotal = Number(statsRaw.total_transactions ?? 0);
-  const tvlUsd = rankings.reduce((s, r) => s + r.tvlUsd, 0);
+
+  const latestAddr = lastCompleteValue(addressChart) ?? 0;
   const volume24h = rankings.reduce((s, r) => s + (r.volume24h ?? 0), 0);
-  const fees24h = rankings.reduce((s, r) => s + (r.fees24h ?? 0), 0);
+  const networkFees = lastCompleteValue(txnsFee) ?? counters.txnsFee24h ?? 0;
+  const fees24h = networkFees || rankings.reduce((s, r) => s + (r.fees24h ?? 0), 0);
+  const tvlUsd = rankings.reduce((s, r) => s + r.tvlUsd, 0);
+
+  recordEcoSnapshot({ volume24h, fees24h, protocols: rows.length, stableMcap });
 
   return {
     rows,
     spark,
     stats: {
       tvlUsd,
-      tvlChange: undefined as number | undefined,
-      protocolChange: undefined as number | undefined,
+      tvlChange: weightedChange(rankings),
+      protocolChange: ecoChangePct("protocols", rows.length),
       volume24h,
-      volumeChange: undefined as number | undefined,
+      volumeChange: ecoChangePct("volume24h", volume24h) ?? dayOverDayPct(usdcVol),
       fees24h,
-      feesChange: undefined as number | undefined,
-      activeUsers: latestAddr || Number(statsRaw.total_addresses ?? 0),
-      usersChange,
-      transactions: txToday || txTotal,
+      feesChange: ecoChangePct("fees24h", fees24h) ?? dayOverDayPct(txnsFee),
+      activeUsers: latestAddr,
+      usersChange: dayOverDayPct(addressChart),
+      transactions: Number(counters.newTxns24h ?? statsRaw.transactions_today ?? 0),
       txChange: undefined as number | undefined,
+      stableMcap,
+      stableChange: ecoChangePct("stableMcap", stableMcap),
     },
   };
 }
@@ -85,6 +100,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
       name: String(t.name ?? ""),
       symbol: String(t.symbol ?? ""),
       holdersCount: Number(t.holders_count ?? 0),
+      iconUrl: t.icon_url ? String(t.icon_url) : undefined,
     }));
   },
   [paths.nfts]: async () => {
@@ -103,6 +119,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
           ...s,
           name: String(t?.name ?? s.symbol),
           holders: Number(t?.holders_count ?? 0),
+          iconUrl: t?.icon_url ? String(t.icon_url) : undefined,
         };
       }),
     ),
@@ -159,8 +176,4 @@ export function prefetchRoute(path: string) {
 export function prefetchCore() {
   prefetch("networkMeta", routeLoaders.networkMeta);
   prefetchRoute(paths.home);
-  prefetchRoute(paths.ecosystem);
-  prefetchRoute(paths.protocols);
-  prefetchRoute(paths.tokens);
-  prefetchRoute(paths.explorer);
 }

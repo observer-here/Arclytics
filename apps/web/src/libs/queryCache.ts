@@ -5,7 +5,7 @@ type Entry = {
 };
 
 const store = new Map<string, Entry>();
-export const CACHE_TTL = 45_000;
+export const CACHE_TTL = 60_000;
 
 export function peekCache<T>(key: string): T | undefined {
   return store.get(key)?.value as T | undefined;

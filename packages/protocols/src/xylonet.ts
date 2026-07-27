@@ -5,6 +5,9 @@ export const xylonet: ProtocolConfig = {
   slug: "xylonet",
   name: "XyloNet",
   category: "yield",
+  description:
+    "XyloNet is a yield vault and LP protocol on Arc, optimizing USDC and EURC liquidity across vaults and pools.",
+  website: "https://xylonet.xyz",
   contracts: [
     {
       address: "0x240Eb85458CD41361bd8C3773253a1D78054f747",

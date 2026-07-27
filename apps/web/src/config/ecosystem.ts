@@ -7,17 +7,19 @@ export type EcosystemFilterId =
   | "all"
   | "defi"
   | "dex"
-  | "derivatives"
+  | "perps"
   | "lending"
   | "yield"
   | "liquid_staking"
-  | "restaking"
-  | "rwa"
-  | "stablecoin"
-  | "bridge"
-  | "oracle"
-  | "infrastructure"
-  | "nft";
+  | "derivatives"
+  | "options"
+  | "insurance"
+  | "predict"
+  | "gaming"
+  | "nft"
+  | "social"
+  | "infra"
+  | "other";
 
 export const ECOSYSTEM_FILTERS: Array<{
   id: EcosystemFilterId;
@@ -28,17 +30,19 @@ export const ECOSYSTEM_FILTERS: Array<{
   { id: "all", label: "All", icon: Icons.Grid, match: [] },
   { id: "defi", label: "DeFi", icon: Icons.DeFi, match: ["dex", "lending", "yield", "derivatives", "stablecoin"] },
   { id: "dex", label: "DEX", icon: Icons.Dex, match: ["dex"] },
-  { id: "derivatives", label: "Perps", icon: Icons.Perps, match: ["derivatives"] },
+  { id: "perps", label: "Perps", icon: Icons.Perps, match: ["derivatives"] },
   { id: "lending", label: "Lending", icon: Icons.Lending, match: ["lending"] },
   { id: "yield", label: "Yield", icon: Icons.Yield, match: ["yield"] },
   { id: "liquid_staking", label: "Liquid Staking", icon: Icons.LiquidStaking, match: ["liquid_staking"] },
-  { id: "restaking", label: "Restaking", icon: Icons.Restaking, match: ["restaking"] },
-  { id: "rwa", label: "RWA", icon: Icons.Rwa, match: ["rwa"] },
-  { id: "stablecoin", label: "Stablecoins", icon: Icons.Stablecoins, match: ["stablecoin"] },
-  { id: "bridge", label: "Bridges", icon: Icons.Bridges, match: ["bridge"] },
-  { id: "oracle", label: "Oracles", icon: Icons.Oracle, match: ["oracle"] },
-  { id: "infrastructure", label: "Infrastructure", icon: Icons.Infra, match: ["infrastructure", "other"] },
-  { id: "nft", label: "NFT Marketplace", icon: Icons.Nfts, match: ["nft"] },
+  { id: "derivatives", label: "Derivatives", icon: Icons.Activity, match: ["derivatives"] },
+  { id: "options", label: "Options", icon: Icons.Options, match: ["options"] },
+  { id: "insurance", label: "Insurance", icon: Icons.Insurance, match: ["insurance"] },
+  { id: "predict", label: "Predict Market", icon: Icons.Predict, match: ["predict"] },
+  { id: "gaming", label: "Gaming", icon: Icons.Gaming, match: ["gaming"] },
+  { id: "nft", label: "NFT", icon: Icons.Nfts, match: ["nft"] },
+  { id: "social", label: "Social", icon: Icons.Social, match: ["social"] },
+  { id: "infra", label: "Infra", icon: Icons.Infra, match: ["infrastructure", "bridge", "other"] },
+  { id: "other", label: "Other", icon: Icons.Layers, match: ["other", "rwa", "stablecoin"] },
 ];
 
 export const CATEGORY_PILL: Record<string, string> = {

@@ -3,7 +3,6 @@ import { paths } from "@/routes/paths";
 export const mainNav = [
   { href: paths.home, label: "Dashboard", icon: "Dashboard" as const },
   { href: paths.ecosystem, label: "Ecosystem", icon: "Ecosystem" as const },
-  { href: paths.protocols, label: "Protocols", icon: "DeFi" as const },
   { href: paths.tokens, label: "Tokens", icon: "Tokens" as const },
   { href: paths.stablecoins, label: "Stablecoins", icon: "Stablecoins" as const },
   { href: paths.nfts, label: "NFTs", icon: "Nfts" as const },

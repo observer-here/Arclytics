@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { addresses } from "@arclytics/chain";
+import { TokenIcon } from "@/components/shared/TokenIcon";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { arcscan } from "@/libs/arcscan";
 import { compact } from "@/utils/format";
@@ -19,6 +20,7 @@ export function StablecoinsPage() {
           ...s,
           name: String(t?.name ?? s.symbol),
           holders: Number(t?.holders_count ?? 0),
+          iconUrl: t?.icon_url ? String(t.icon_url) : undefined,
         };
       }),
     );
@@ -44,10 +46,16 @@ export function StablecoinsPage() {
             {(rows ?? []).map((r) => (
               <tr key={r.address}>
                 <td>
-                  <Link to={`/tokens/${r.address}`} className="font-medium text-ink-800 hover:text-arc-700">
-                    {r.symbol}
+                  <Link
+                    to={`/tokens/${r.address}`}
+                    className="inline-flex items-center gap-2 font-medium text-ink-800 hover:text-arc-700"
+                  >
+                    <TokenIcon src={r.iconUrl} symbol={r.symbol} size={22} />
+                    <span>
+                      {r.symbol}
+                      <div className="text-xs font-normal text-ink-400">{r.name}</div>
+                    </span>
                   </Link>
-                  <div className="text-xs text-ink-400">{r.name}</div>
                 </td>
                 <td>{compact(r.holders)}</td>
                 <td className="text-right font-medium">{((r.holders / total) * 100).toFixed(1)}%</td>
