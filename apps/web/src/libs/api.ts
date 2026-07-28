@@ -80,6 +80,13 @@ export type ProtocolDetail = {
   };
   txs: Array<Record<string, unknown>>;
   totals: { txs: number; transfers: number };
+  paymentStats?: {
+    lifetimeCalls: number;
+    loggedVolumeUsd: number;
+    routerReceivedUsd: number;
+    routerSentUsd: number;
+    uniqueRecipients?: number;
+  };
   updatedAt?: number;
 };
 
@@ -132,4 +139,27 @@ export async function loadProtocolDetail(slug: string): Promise<ProtocolDetail |
 
 export async function loadEcosystemFeed(): Promise<EcosystemFeed> {
   return get<EcosystemFeed>("/v1/ecosystem");
+}
+
+export type TokenFeedRow = {
+  address: string;
+  name: string;
+  symbol: string;
+  holders: number;
+  transfers: number;
+  interest: number;
+  iconUrl?: string;
+  price: number | null;
+  marketCap: number | null;
+  volume24h: number | null;
+  change24h?: number | null;
+  change7d?: number | null;
+  category: string;
+  protocol: string;
+  amm: string;
+  blurb?: string;
+};
+
+export async function getTokens(): Promise<{ items: TokenFeedRow[]; updatedAt: number }> {
+  return get<{ items: TokenFeedRow[]; updatedAt: number }>("/v1/tokens");
 }

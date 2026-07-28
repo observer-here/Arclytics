@@ -1,22 +1,26 @@
+import { tokenLogo } from "@arclytics/chain";
 import { useState } from "react";
 
 export function TokenIcon({
+  address,
   src,
   symbol,
   size = 20,
 }: {
+  address?: string;
   src?: string | null;
   symbol?: string;
   size?: number;
 }) {
   const [broken, setBroken] = useState(false);
+  const resolved = (address ? tokenLogo(address) : undefined) ?? src ?? undefined;
   const letter = (symbol || "?").slice(0, 1).toUpperCase();
-  const showImg = Boolean(src) && !broken;
+  const showImg = Boolean(resolved) && !broken;
 
   if (showImg) {
     return (
       <img
-        src={src!}
+        src={resolved!}
         alt=""
         width={size}
         height={size}

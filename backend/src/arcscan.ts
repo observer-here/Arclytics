@@ -18,15 +18,33 @@ function withParams(path: string, params?: PageParams) {
   return s ? `${path}${path.includes("?") ? "&" : "?"}${s}` : path;
 }
 
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 export function createArcscan(env: Env) {
   const base = env.ARCSCAN_BASE.replace(/\/$/, "");
 
   async function get<T>(path: string): Promise<T> {
-    const res = await fetch(`${base}${path}`, {
-      headers: { accept: "application/json" },
-    });
-    if (!res.ok) throw new Error(`ArcScan ${path} -> ${res.status}`);
-    return res.json() as Promise<T>;
+    let lastErr: Error | null = null;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      try {
+        const res = await fetch(`${base}${path}`, {
+          headers: { accept: "application/json" },
+        });
+        if (res.status === 429 || res.status >= 500) {
+          lastErr = new Error(`ArcScan ${path} -> ${res.status}`);
+          await sleep(400 * 2 ** attempt);
+          continue;
+        }
+        if (!res.ok) throw new Error(`ArcScan ${path} -> ${res.status}`);
+        return res.json() as Promise<T>;
+      } catch (err) {
+        lastErr = err instanceof Error ? err : new Error(String(err));
+        if (attempt < 3) await sleep(400 * 2 ** attempt);
+      }
+    }
+    throw lastErr ?? new Error(`ArcScan ${path} failed`);
   }
 
   async function paged<T>(path: string, params?: PageParams): Promise<Paged<T>> {
@@ -50,9 +68,20 @@ export function createArcscan(env: Env) {
       paged<Record<string, unknown>>(`/addresses/${addr}/token-transfers`, params),
     addressTransactions: (addr: string, params?: PageParams) =>
       paged<Record<string, unknown>>(`/addresses/${addr}/transactions`, params),
+    /** Daily native-coin (USDC on Arc) balance — ~10 days of real history. */
+    coinBalanceHistoryByDay: (addr: string) =>
+      get<{ items?: Array<{ date?: string; value?: string }>; days?: number }>(
+        `/addresses/${addr}/coin-balance-history-by-day`,
+      ),
     transaction: (hash: string) => get<Record<string, unknown>>(`/transactions/${hash}`),
     stats: () => get<Record<string, unknown>>("/stats"),
     token: (addr: string) => get<Record<string, unknown>>(`/tokens/${addr}`),
+    tokenCounters: (addr: string) =>
+      get<{ token_holders_count?: string; transfers_count?: string }>(
+        `/tokens/${addr}/counters`,
+      ),
+    tokenTransfers: (addr: string, params?: PageParams) =>
+      paged<Record<string, unknown>>(`/tokens/${addr}/transfers`, params),
   };
 }
 

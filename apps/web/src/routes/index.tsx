@@ -1,7 +1,7 @@
 import { DashboardPage } from "@/pages/dashboard";
 import { EcosystemPage } from "@/pages/ecosystem/EcosystemPage";
 import { ProtocolDetailPage, RankingsPage } from "@/pages/protocols";
-import { TokensPage, TokenDetailPage } from "@/pages/tokens";
+import { TokensPage, TokenDetailPage, MarketCapPage } from "@/pages/tokens";
 import { StablecoinsPage } from "@/pages/stablecoins/StablecoinsPage";
 import { NftsPage } from "@/pages/nfts/NftsPage";
 import { BridgesPage } from "@/pages/bridges/BridgesPage";
@@ -34,6 +34,7 @@ export function AppRoutes() {
       <Route path={paths.protocols} element={<Navigate to={paths.ecosystem} replace />} />
       <Route path="/protocols/:slug" element={<ProtocolDetailPage />} />
       <Route path={paths.rankings} element={<RankingsPage />} />
+      <Route path={paths.tokensMarketCap} element={<MarketCapPage />} />
       <Route path={paths.tokens} element={<TokensPage />} />
       <Route path="/tokens/:address" element={<TokenDetailPage />} />
       <Route path={paths.stablecoins} element={<StablecoinsPage />} />

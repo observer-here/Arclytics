@@ -37,7 +37,7 @@ export function TopTokens({
                   to={`/tokens/${r.address}`}
                   className="flex items-center gap-1.5 font-medium text-ink-800"
                 >
-                  <TokenIcon src={r.iconUrl} symbol={r.symbol} size={20} />
+                  <TokenIcon address={r.address} src={r.iconUrl} symbol={r.symbol} size={20} />
                   <span className="truncate">{r.name || r.symbol}</span>
                 </Link>
               </td>

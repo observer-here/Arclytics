@@ -1,5 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { protocols } from "@arclytics/protocols";
+import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { arcscan } from "@/libs/arcscan";
 
@@ -29,10 +30,13 @@ export function SearchPage() {
           <Link
             key={p.slug}
             to={`/protocols/${p.slug}`}
-            className="block px-4 py-3 text-sm hover:bg-ink-50"
+            className="flex items-center gap-2.5 px-4 py-3 text-sm hover:bg-ink-50"
           >
-            <span className="text-ink-400">Protocol · </span>
-            <span className="font-medium text-ink-800">{p.name}</span>
+            <ProtocolIcon slug={p.slug} name={p.name} category={p.category} size={24} />
+            <div>
+              <span className="text-ink-400">Protocol · </span>
+              <span className="font-medium text-ink-800">{p.name}</span>
+            </div>
           </Link>
         ))}
         {results.slice(0, 20).map((r, i) => {

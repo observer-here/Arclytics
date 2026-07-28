@@ -1,10 +1,12 @@
 export function usd(n: number) {
   if (!Number.isFinite(n)) return "$0";
+  const abs = Math.abs(n);
+  const digits = abs >= 10_000 ? 2 : abs >= 1 ? 2 : abs >= 0.01 ? 4 : 6;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    notation: n >= 10_000 ? "compact" : "standard",
-    maximumFractionDigits: 2,
+    notation: abs >= 10_000 ? "compact" : "standard",
+    maximumFractionDigits: digits,
   }).format(n);
 }
 

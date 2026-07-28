@@ -52,7 +52,7 @@ export function NftsPage() {
                     to={`/tokens/${r.address}`}
                     className="inline-flex items-center gap-2 font-medium text-ink-800 hover:text-arc-700"
                   >
-                    <TokenIcon src={r.iconUrl} symbol={r.symbol} size={22} />
+                    <TokenIcon address={r.address} src={r.iconUrl} symbol={r.symbol} size={22} />
                     {r.name || shortName(r.address)}
                   </Link>
                 </td>

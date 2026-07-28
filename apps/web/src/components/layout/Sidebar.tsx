@@ -70,9 +70,7 @@ export function Sidebar({
   return (
     <aside className="flex h-screen w-[200px] flex-col border-r border-ink-200 bg-white">
       <Link to={paths.home} onClick={onNavigate} className="flex shrink-0 items-center gap-2 px-2.5 py-2.5">
-        <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-arc-500 to-indigo-600 text-white">
-          <Icons.Logo size={14} />
-        </span>
+        <img src="/logo.png" alt="Arclytics" className="h-8 w-8 rounded-lg object-contain" />
         <div className="min-w-0 leading-tight">
           <div className="text-[13px] font-semibold text-ink-900">Arclytics</div>
           <div className="text-[10px] text-arc-600">Arc Testnet</div>

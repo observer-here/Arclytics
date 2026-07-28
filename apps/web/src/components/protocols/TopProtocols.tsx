@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { paths } from "@/routes/paths";
 import { usd } from "@/utils/format";
 import { CategoryFilter } from "@/components/shared/CategoryFilter";
+import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categories";
 import { useMemo, useState } from "react";
 
@@ -46,9 +47,7 @@ export function TopProtocols({
                     to={`/protocols/${r.slug}`}
                     className="inline-flex items-center gap-1.5 font-medium text-ink-800"
                   >
-                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-arc-50 text-[10px] font-semibold text-arc-700">
-                      {r.name.slice(0, 1)}
-                    </span>
+                    <ProtocolIcon slug={r.slug} name={r.name} category={r.category} size={20} />
                     <span className="truncate text-left">{r.name}</span>
                   </Link>
                 </td>

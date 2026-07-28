@@ -1,24 +1,25 @@
-import { addresses } from "@arclytics/chain";
-import { getProtocolRankings, loadEcosystemFeed } from "@/libs/api";
+import { addresses, tokenLogo } from "@arclytics/chain";
+import { getProtocolRankings, getTokens, loadEcosystemFeed } from "@/libs/api";
 import { arcscan } from "@/libs/arcscan";
 import { getDashboardData } from "@/libs/dashboard";
 import { prefetch } from "@/libs/queryCache";
 import { paths } from "@/routes/paths";
 
 export async function loadDashboard() {
-  const [data, tokens] = await Promise.all([
+  const [data, feed] = await Promise.all([
     getDashboardData(),
-    arcscan.tokens("ERC-20").catch(() => ({
-      items: [] as Array<Record<string, unknown>>,
-    })),
+    getTokens().catch(() => ({ items: [] as Array<{ address: string; name: string; symbol: string; holders: number; iconUrl?: string }> })),
   ]);
-  const topTokens = (tokens.items ?? []).slice(0, 10).map((t) => ({
-    address: String(t.address_hash),
-    name: String(t.name ?? ""),
-    symbol: String(t.symbol ?? ""),
-    holdersCount: Number(t.holders_count ?? 0),
-    iconUrl: t.icon_url ? String(t.icon_url) : undefined,
-  }));
+  const topTokens = [...(feed.items ?? [])]
+    .sort((a, b) => b.holders - a.holders)
+    .slice(0, 10)
+    .map((t) => ({
+      address: t.address,
+      name: t.name,
+      symbol: t.symbol,
+      holdersCount: t.holders,
+      iconUrl: t.iconUrl,
+    }));
   return { data, topTokens };
 }
 
@@ -32,44 +33,12 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
   [paths.protocols]: () => getProtocolRankings().catch(() => []),
   [paths.rankings]: () => getProtocolRankings().catch(() => []),
   [paths.tokens]: async () => {
-    const { LEGIT_TOKENS } = await import("@/config/tokens");
-    const { arcscan } = await import("@/libs/arcscan");
-    const settled = await Promise.all(
-      LEGIT_TOKENS.map(async (meta) => {
-        const t = await arcscan.token(meta.address).catch(() => null);
-        if (!t || (t as { message?: string }).message) return null;
-        const address = String(t.address_hash ?? meta.address);
-        const name = String(t.name ?? "");
-        const symbol = String(t.symbol ?? "");
-        if (!name && !symbol) return null;
-        const rate = t.exchange_rate != null ? Number(t.exchange_rate) : null;
-        const price =
-          rate != null && Number.isFinite(rate) && rate > 0
-            ? rate
-            : meta.pegUsd
-              ? 1
-              : null;
-        const mcapRaw =
-          t.circulating_market_cap != null ? Number(t.circulating_market_cap) : null;
-        const vol = t.volume_24h != null ? Number(t.volume_24h) : null;
-        return {
-          address,
-          name,
-          symbol,
-          holders: Number(t.holders_count ?? 0),
-          iconUrl: t.icon_url ? String(t.icon_url) : undefined,
-          price,
-          change24h: price != null ? 0 : null,
-          change7d: price != null ? 0 : null,
-          marketCap:
-            mcapRaw != null && Number.isFinite(mcapRaw) && mcapRaw > 0 ? mcapRaw : null,
-          volume24h: vol != null && Number.isFinite(vol) ? vol : null,
-          category: meta.category,
-          protocol: meta.protocol,
-        };
-      }),
-    );
-    return settled.filter(Boolean);
+    const feed = await getTokens();
+    return feed.items ?? [];
+  },
+  [paths.tokensMarketCap]: async () => {
+    const feed = await getTokens();
+    return feed.items ?? [];
   },
   [paths.nfts]: async () => {
     const data = await arcscan.tokens("ERC-721").catch(() => ({ items: [] }));
@@ -80,14 +49,20 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
       [
         { address: addresses.usdc, symbol: "USDC" },
         { address: addresses.eurc, symbol: "EURC" },
-        { address: addresses.usyc, symbol: "USYC" },
+        { address: "0x175cdb1d338945f0d851a741ccf787d343e57952", symbol: "USDT" },
+        { address: "0x825ae482558415310c71b7e03d2bbbe409345903", symbol: "USYC" },
+        { address: "0x911b4000D3422F482F4062a913885f7b035382Df", symbol: "WUSDC" },
       ].map(async (s) => {
-        const t = await arcscan.token(s.address).catch(() => null);
+        const [t, c] = await Promise.all([
+          arcscan.token(s.address).catch(() => null),
+          arcscan.tokenCounters(s.address).catch(() => null),
+        ]);
         return {
           ...s,
           name: String(t?.name ?? s.symbol),
-          holders: Number(t?.holders_count ?? 0),
-          iconUrl: t?.icon_url ? String(t.icon_url) : undefined,
+          holders: Number(c?.token_holders_count ?? t?.holders_count ?? 0),
+          transfers: Number(c?.transfers_count ?? 0),
+          iconUrl: tokenLogo(s.address) ?? (t?.icon_url ? String(t.icon_url) : undefined),
         };
       }),
     ),
@@ -121,13 +96,14 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
 };
 
 const cacheKeyByPath: Record<string, string> = {
-  [paths.home]: "dashboard",
-  [paths.ecosystem]: "ecosystem-v8",
-  [paths.protocols]: "protocol-rankings-v8",
-  [paths.rankings]: "protocol-rankings-v8",
-  [paths.tokens]: "tokens-legit-v3",
+  [paths.home]: "dashboard-v3",
+  [paths.ecosystem]: "ecosystem-v11",
+  [paths.protocols]: "protocol-rankings-v11",
+  [paths.rankings]: "protocol-rankings-v11",
+  [paths.tokens]: "tokens-api-v3",
+  [paths.tokensMarketCap]: "tokens-api-v3",
   [paths.nfts]: "tokens-erc721",
-  [paths.stablecoins]: "stablecoins",
+  [paths.stablecoins]: "stablecoins-v2",
   [paths.analytics]: "analytics-tx",
   [paths.explorer]: "transactions",
   [paths.blocks]: "blocks",
@@ -138,10 +114,17 @@ export function prefetchRoute(path: string) {
   const loader = routeLoaders[path];
   const key = cacheKeyByPath[path];
   if (!loader || !key) return;
-  prefetch(key, loader);
+  void prefetch(key, loader);
 }
 
+export function prefetchNetworkMeta() {
+  void prefetch("networkMeta", routeLoaders.networkMeta);
+}
+
+/** Warm critical routes on app boot */
 export function prefetchCore() {
-  prefetch("networkMeta", routeLoaders.networkMeta);
   prefetchRoute(paths.home);
+  prefetchRoute(paths.ecosystem);
+  prefetchRoute(paths.tokens);
+  prefetchNetworkMeta();
 }

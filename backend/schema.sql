@@ -26,6 +26,21 @@ CREATE TABLE IF NOT EXISTS eco_latest (
   updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS tokens_latest (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  payload TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS token_snaps (
+  address TEXT NOT NULL,
+  day INTEGER NOT NULL,
+  price REAL NOT NULL DEFAULT 0,
+  mcap REAL NOT NULL DEFAULT 0,
+  holders INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (address, day)
+);
+
 CREATE TABLE IF NOT EXISTS meta (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

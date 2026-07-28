@@ -90,10 +90,19 @@ function ChartHeader({
   );
 }
 
-function YAxis({ max, h }: { max: number; h: number }) {
+function YAxis({
+  max,
+  min = 0,
+  h,
+}: {
+  max: number;
+  min?: number;
+  h: number;
+}) {
+  const span = max - min || 1;
   const ticks = [1, 0.5, 0].map((t) => ({
     y: h - 4 - t * (h - 8),
-    label: compact(max * t),
+    label: compact(min + span * t),
   }));
   return (
     <div
@@ -146,13 +155,19 @@ export function AreaChartCard({
   const [tip, setTip] = useState<{ point: Point; x: number; y: number } | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const sliced = useRangeData(data, range);
-  const max = Math.max(...sliced.map((d) => d.value), 1);
+  const values = sliced.map((d) => d.value);
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values.filter((v) => v > 0), max);
+  // TVL stock charts: zoom to range so 7D/30D movement is visible
+  const yMin = min > 0 && max / min < 50 ? min * 0.998 : 0;
+  const yMax = max;
+  const span = yMax - yMin || 1;
   const w = 520;
   const h = 110;
   const pad = 4;
   const pts = sliced.map((d, i) => {
     const x = pad + (i / Math.max(sliced.length - 1, 1)) * (w - pad * 2);
-    const y = h - pad - (d.value / max) * (h - pad * 2);
+    const y = h - pad - ((d.value - yMin) / span) * (h - pad * 2);
     return [x, y] as const;
   });
   const line = pts.map(([x, y]) => `${x},${y}`).join(" ");
@@ -177,7 +192,7 @@ export function AreaChartCard({
         <div className="flex h-[110px] items-center justify-center text-xs text-ink-400">No data</div>
       ) : (
         <div className="flex gap-1">
-          <YAxis max={max} h={h} />
+          <YAxis max={yMax} min={yMin} h={h} />
           <div
             ref={box}
             className="relative min-w-0 flex-1"
@@ -234,10 +249,12 @@ export function DonutChart({
   title,
   slices,
   colors = ["#3b82f6", "#8b5cf6", "#f97316", "#10b981", "#06b6d4"],
+  bare,
 }: {
   title: string;
   slices: Array<{ label: string; value: number }>;
   colors?: string[];
+  bare?: boolean;
 }) {
   const total = slices.reduce((s, d) => s + d.value, 0) || 1;
   const r = 42;
@@ -252,7 +269,7 @@ export function DonutChart({
   });
 
   return (
-    <div className="card p-2.5">
+    <div className={bare ? undefined : "card p-2.5"}>
       <div className="panel-title mb-2">{title}</div>
       {!slices.length ? (
         <div className="flex h-[140px] items-center justify-center text-xs text-ink-400">No data</div>

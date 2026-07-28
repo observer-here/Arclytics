@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CategoryFilter } from "@/components/shared/CategoryFilter";
+import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categories";
 import { usd } from "@/utils/format";
 
@@ -35,7 +36,8 @@ export function ProtocolsTable({
               <tr key={r.slug}>
                 <td className="w-7 !pr-0 text-ink-400">{i + 1}</td>
                 <td className="!pl-1.5">
-                  <Link to={`/protocols/${r.slug}`} className="font-medium text-ink-800 hover:text-arc-700">
+                  <Link to={`/protocols/${r.slug}`} className="inline-flex items-center gap-2 font-medium text-ink-800 hover:text-arc-700">
+                    <ProtocolIcon slug={r.slug} name={r.name} category={r.category} size={22} />
                     {r.name}
                   </Link>
                 </td>

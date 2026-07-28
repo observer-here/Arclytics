@@ -11,7 +11,7 @@ import { loadDashboard } from "@/libs/prefetch";
 import { compact, usd } from "@/utils/format";
 
 export function DashboardPage() {
-  const { data: loaded, loading, error } = useAsyncData("dashboard", loadDashboard);
+  const { data: loaded, loading, error } = useAsyncData("dashboard-v3", loadDashboard);
 
   if (loading) return <div className="text-sm text-ink-400">Loading…</div>;
   if (error) return <div className="text-sm text-ink-400">{error}</div>;

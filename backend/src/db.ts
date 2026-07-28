@@ -66,7 +66,16 @@ export type DetailPayload = {
   };
   txs: Array<Record<string, unknown>>;
   totals: { txs: number; transfers: number };
+  paymentStats?: PaymentRouterStats;
   updatedAt: number;
+};
+
+export type PaymentRouterStats = {
+  lifetimeCalls: number;
+  loggedVolumeUsd: number;
+  routerReceivedUsd: number;
+  routerSentUsd: number;
+  uniqueRecipients?: number;
 };
 
 const DAY_MS = 86_400_000;
@@ -112,8 +121,9 @@ export async function saveSnap(
     .first<{ tvl: number; volume: number; fees: number; users: number }>();
 
   const isToday = day === today;
+  // For past days, prefer existing ArcScan-seeded TVL over a lower sample
   const next = {
-    tvl: isToday ? tvl : Math.max(existing?.tvl ?? 0, tvl),
+    tvl: isToday ? tvl : existing?.tvl && existing.tvl > 0 ? Math.max(existing.tvl, tvl) : tvl || existing?.tvl || 0,
     volume: isToday ? volume : Math.max(existing?.volume ?? 0, volume),
     fees: isToday ? fees : Math.max(existing?.fees ?? 0, fees),
     users: isToday ? users : Math.max(existing?.users ?? 0, users),
@@ -199,14 +209,21 @@ export async function changePct(
   if (current <= 0) return undefined;
   const target = dayKey() - daysAgo;
   const row = await env.DB.prepare(
-    `SELECT ${field} AS value FROM protocol_snaps
+    `SELECT day, ${field} AS value FROM protocol_snaps
      WHERE slug = ? AND day <= ?
      ORDER BY day DESC LIMIT 1`,
   )
     .bind(slug, target)
-    .first<{ value: number }>();
+    .first<{ day: number; value: number }>();
   if (!row || row.value <= 0) return undefined;
-  return ((current - row.value) / row.value) * 100;
+  // Snap must be close to the requested day (no "nearest ancient row")
+  const slack = daysAgo <= 1 ? 0 : daysAgo <= 7 ? 2 : 5;
+  if (target - row.day > slack) return undefined;
+  const pct = ((current - row.value) / row.value) * 100;
+  if (!Number.isFinite(pct)) return undefined;
+  // Reject absurd jumps (bad snaps / incomplete history)
+  if (Math.abs(pct) > 100) return undefined;
+  return pct;
 }
 
 export async function saveEco(env: Env, payload: unknown) {
@@ -227,6 +244,105 @@ export async function getEco(env: Env) {
   }>();
   if (!row) return null;
   return { ...(JSON.parse(row.payload) as Record<string, unknown>), updatedAt: row.updated_at };
+}
+
+export async function saveTokens(env: Env, payload: { items: unknown[]; updatedAt: number }) {
+  await env.DB.prepare(
+    `INSERT INTO tokens_latest (id, payload, updated_at)
+     VALUES (1, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
+  )
+    .bind(JSON.stringify(payload), payload.updatedAt)
+    .run();
+}
+
+export async function getTokens(env: Env): Promise<{ items: unknown[]; updatedAt: number } | null> {
+  const row = await env.DB.prepare(`SELECT payload, updated_at FROM tokens_latest WHERE id = 1`).first<{
+    payload: string;
+    updated_at: number;
+  }>();
+  if (!row) return null;
+  const parsed = JSON.parse(row.payload) as { items?: unknown[]; updatedAt?: number };
+  return {
+    items: parsed.items ?? [],
+    updatedAt: parsed.updatedAt ?? row.updated_at,
+  };
+}
+
+export async function saveTokenSnap(
+  env: Env,
+  address: string,
+  day: number,
+  price: number,
+  mcap: number,
+  holders: number,
+) {
+  const addr = address.toLowerCase();
+  const today = dayKey();
+  const existing = await env.DB.prepare(
+    `SELECT price, mcap, holders FROM token_snaps WHERE address = ? AND day = ?`,
+  )
+    .bind(addr, day)
+    .first<{ price: number; mcap: number; holders: number }>();
+
+  const isToday = day === today;
+  const nextPrice =
+    isToday || !existing?.price
+      ? price
+      : price > 0
+        ? price
+        : existing.price;
+  const nextMcap = isToday ? mcap : Math.max(existing?.mcap ?? 0, mcap);
+  const nextHolders = isToday ? holders : Math.max(existing?.holders ?? 0, holders);
+
+  await env.DB.prepare(
+    `INSERT INTO token_snaps (address, day, price, mcap, holders)
+     VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(address, day) DO UPDATE SET
+       price = excluded.price,
+       mcap = excluded.mcap,
+       holders = excluded.holders`,
+  )
+    .bind(addr, day, nextPrice, nextMcap, nextHolders)
+    .run();
+}
+
+/** Force-write a historical price (ArcScan backfill) — does not max with stale zeros. */
+export async function seedTokenSnapPrice(env: Env, address: string, day: number, price: number) {
+  if (!Number.isFinite(price) || price <= 0) return;
+  const addr = address.toLowerCase();
+  await env.DB.prepare(
+    `INSERT INTO token_snaps (address, day, price, mcap, holders)
+     VALUES (?, ?, ?, 0, 0)
+     ON CONFLICT(address, day) DO UPDATE SET price = excluded.price`,
+  )
+    .bind(addr, day, price)
+    .run();
+}
+
+export async function tokenChangePct(
+  env: Env,
+  address: string,
+  current: number,
+  daysAgo: number,
+): Promise<number | undefined> {
+  if (current <= 0) return undefined;
+  const target = dayKey() - daysAgo;
+  const row = await env.DB.prepare(
+    `SELECT day, price AS value FROM token_snaps
+     WHERE address = ? AND day <= ? AND price > 0
+     ORDER BY day DESC LIMIT 1`,
+  )
+    .bind(address.toLowerCase(), target)
+    .first<{ day: number; value: number }>();
+  if (!row || row.value <= 0) return undefined;
+  const slack = daysAgo <= 1 ? 0 : daysAgo <= 7 ? 2 : 5;
+  if (target - row.day > slack) return undefined;
+  const pct = ((current - row.value) / row.value) * 100;
+  if (!Number.isFinite(pct)) return undefined;
+  // Memes can move hard; still reject nonsense
+  if (Math.abs(pct) > 500) return undefined;
+  return pct;
 }
 
 export async function setMeta(env: Env, key: string, value: string) {

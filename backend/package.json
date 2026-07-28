@@ -5,10 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "dev:remote": "wrangler dev --remote",
     "deploy": "wrangler deploy",
+    "deploy:remote": "wrangler deploy && wrangler d1 execute arclytics --remote --file=./schema.sql",
     "db:init": "wrangler d1 execute arclytics --local --file=./schema.sql",
     "db:init:remote": "wrangler d1 execute arclytics --remote --file=./schema.sql",
-    "ingest": "curl -X POST http://127.0.0.1:8787/v1/ingest"
+    "ingest": "node ../scripts/ingest-api.mjs",
+    "ingest:full": "node ../scripts/ingest-api.mjs full",
+    "ingest:batch": "node ../scripts/ingest-api.mjs batch",
+    "ingest:tokens": "node ../scripts/ingest-api.mjs tokens"
   },
   "dependencies": {
     "@arclytics/chain": "workspace:*",

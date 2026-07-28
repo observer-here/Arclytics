@@ -39,7 +39,7 @@ export function StablecoinsTable({
                   to={`/tokens/${r.address}`}
                   className="inline-flex items-center gap-1.5 font-medium text-ink-800"
                 >
-                  <TokenIcon src={r.iconUrl} symbol={r.symbol} size={18} />
+                  <TokenIcon address={r.address} src={r.iconUrl} symbol={r.symbol} size={18} />
                   <span>
                     {r.symbol}
                     <div className="text-[10px] font-normal text-ink-400">{r.name}</div>

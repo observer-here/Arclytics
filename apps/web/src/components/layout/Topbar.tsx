@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Icons } from "@/components/shared/Icons";
 import { paths } from "@/routes/paths";
@@ -17,6 +17,10 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
       >
         <Icons.Menu size={15} />
       </button>
+
+      <Link to={paths.home} className="shrink-0 lg:hidden" aria-label="Arclytics home">
+        <img src="/logo.png" alt="Arclytics" className="h-7 w-7 rounded-lg object-contain" />
+      </Link>
 
       <form
         className="relative min-w-0 flex-1"

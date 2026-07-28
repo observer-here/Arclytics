@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import { Icons } from "@/components/shared/Icons";
 import { MetricCard } from "@/components/ecosystem/MetricCard";
 import { PageNav } from "@/components/shared/PageNav";
+import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import {
-  CATEGORY_ACCENT,
   CATEGORY_PILL,
   ECOSYSTEM_FILTERS,
   type EcosystemFilterId,
@@ -32,10 +32,17 @@ type Row = {
 const PAGE_SIZE = 25;
 
 function MiniSpark({ series, up }: { series: number[]; up?: boolean }) {
-  const max = Math.max(...series, 1);
+  if (!series.length) return <span className="text-ink-300">—</span>;
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const range = max - min || Math.max(max, 1) * 0.02 || 1;
   const color = up === false ? "#f43f5e" : "#10b981";
   const line = series
-    .map((v, i) => `${(i / Math.max(series.length - 1, 1)) * 100},${18 - (v / max) * 14}`)
+    .map((v, i) => {
+      const x = (i / Math.max(series.length - 1, 1)) * 100;
+      const y = 16 - ((v - min) / range) * 12;
+      return `${x},${y}`;
+    })
     .join(" ");
   return (
     <svg width="72" height="20" viewBox="0 0 100 20" preserveAspectRatio="none" className="inline-block">
@@ -56,7 +63,7 @@ function Change({ n }: { n?: number }) {
 }
 
 export function EcosystemPage() {
-  const { data, loading, error } = useAsyncData("ecosystem-v8", loadEcosystem);
+  const { data, loading, error } = useAsyncData("ecosystem-v11", loadEcosystem);
   const [filter, setFilter] = useState<EcosystemFilterId>("all");
   const [sortBy, setSortBy] = useState<"tvl" | "change">("tvl");
   const [page, setPage] = useState(1);
@@ -87,7 +94,7 @@ export function EcosystemPage() {
 
   return (
     <div className="space-y-2.5">
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+      <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5">
         {ECOSYSTEM_FILTERS.map((f) => {
           const Icon = f.icon;
           const active = filter === f.id;
@@ -221,14 +228,7 @@ export function EcosystemPage() {
                         to={`/protocols/${r.slug}`}
                         className="inline-flex max-w-full items-center gap-2 text-[14px] font-semibold text-ink-900 hover:text-arc-700"
                       >
-                        <span
-                          className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[12px] font-semibold text-white"
-                          style={{
-                            background: `linear-gradient(135deg, ${CATEGORY_ACCENT[r.category] ?? "#64748b"}, #2563eb)`,
-                          }}
-                        >
-                          {r.name.slice(0, 1)}
-                        </span>
+                        <ProtocolIcon slug={r.slug} name={r.name} category={r.category} size={32} />
                         <span className="truncate text-left">{r.name}</span>
                       </Link>
                     </td>
@@ -258,11 +258,13 @@ export function EcosystemPage() {
                     <td className="px-3 py-3">
                       <MiniSpark
                         series={
-                          r.spark7d?.some((v) => v > 0)
+                          r.spark7d?.length
                             ? r.spark7d
-                            : [0, 0, 0, 0, 0, 0, r.volume24h ?? 0]
+                            : r.tvlUsd > 0
+                              ? [r.tvlUsd * 0.99, r.tvlUsd]
+                              : []
                         }
-                        up={(r.change24h ?? r.change7d ?? 0) >= 0}
+                        up={(r.change7d ?? r.change24h ?? 0) >= 0}
                       />
                     </td>
                     <td className="px-2 py-3 text-ink-300">

@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AreaChartCard, BarChartCard, DonutChart, MultiLineChart } from "@/components/charts/Charts";
 import { Icons } from "@/components/shared/Icons";
+import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categories";
-import { CATEGORY_ACCENT, CATEGORY_PILL } from "@/config/ecosystem";
+import { CATEGORY_PILL } from "@/config/ecosystem";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadProtocolDetail } from "@/libs/protocolDetail";
 import { paths } from "@/routes/paths";
@@ -36,11 +37,18 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 function Spark({ series, color }: { series: number[]; color: string }) {
-  const max = Math.max(...series, 1);
+  if (series.length < 2) return null;
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const range = max - min || Math.max(Math.abs(max), 1) * 0.02 || 1;
   const line = series
-    .map((v, i) => `${(i / Math.max(series.length - 1, 1)) * 100},${18 - (v / max) * 14}`)
+    .map((v, i) => {
+      const x = (i / Math.max(series.length - 1, 1)) * 100;
+      const y = 16 - ((v - min) / range) * 12;
+      return `${x},${y}`;
+    })
     .join(" ");
-  const area = series.length > 1 ? `0,20 ${line} 100,20` : "";
+  const area = `0,20 ${line} 100,20`;
   const id = `ps-${color.replace("#", "")}`;
   return (
     <svg className="mt-1 w-full" height="20" viewBox="0 0 100 20" preserveAspectRatio="none">
@@ -50,7 +58,7 @@ function Spark({ series, color }: { series: number[]; color: string }) {
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      {area && <polygon points={area} fill={`url(#${id})`} />}
+      <polygon points={area} fill={`url(#${id})`} />
       <polyline fill="none" stroke={color} strokeWidth="1.8" points={line} />
     </svg>
   );
@@ -133,14 +141,25 @@ export function ProtocolDetailPage() {
     }
   };
 
-  const overviewRows = [
-    { k: "Category", v: category },
-    { k: "Launched", v: data.age ? `${data.age} ago` : "—" },
-    { k: "TVL Rank", v: `#${data.rank}` },
-    { k: "24h Fees", v: usd(data.fees24h) },
-    { k: "Contracts", v: String(protocol.contracts.length) },
-    { k: "24h Volume", v: usd(data.volume24h) },
-  ];
+  const overviewRows = data.paymentStats
+    ? [
+        { k: "Category", v: category },
+        { k: "Launched", v: data.age ? `${data.age} ago` : "—" },
+        { k: "Lifetime Calls", v: compact(data.paymentStats.lifetimeCalls) },
+        { k: "Logged Send Volume", v: `${usd(data.paymentStats.loggedVolumeUsd)} (attribution)` },
+        { k: "Real Router Receive", v: usd(data.paymentStats.routerReceivedUsd) },
+        { k: "Real Router Send", v: usd(data.paymentStats.routerSentUsd) },
+        { k: "Unique Recipients", v: compact(data.paymentStats.uniqueRecipients ?? 0) },
+        { k: "Router TVL", v: usd(data.tvlUsd) },
+      ]
+    : [
+        { k: "Category", v: category },
+        { k: "Launched", v: data.age ? `${data.age} ago` : "—" },
+        { k: "TVL Rank", v: `#${data.rank}` },
+        { k: "24h Fees", v: usd(data.fees24h) },
+        { k: "Contracts", v: String(protocol.contracts.length) },
+        { k: "24h Volume", v: usd(data.volume24h) },
+      ];
 
   return (
     <div className="space-y-2.5">
@@ -154,14 +173,7 @@ export function ProtocolDetailPage() {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <div
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
-            style={{
-              background: `linear-gradient(135deg, ${CATEGORY_ACCENT[protocol.category] ?? "#6366f1"}, #2563eb)`,
-            }}
-          >
-            {protocol.name.slice(0, 1)}
-          </div>
+          <ProtocolIcon slug={protocol.slug} name={protocol.name} category={protocol.category} size={48} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
               <h1 className="text-lg font-semibold text-ink-900">{protocol.name}</h1>
@@ -236,18 +248,47 @@ export function ProtocolDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <Kpi label="TVL" value={usd(data.tvlUsd)} change={data.change24h} series={data.tvlSpark} color="#3b82f6" />
-        <Kpi label="24h Volume" value={usd(data.volume24h)} change={data.changeVol} series={data.volSpark} color="#8b5cf6" />
-        <Kpi label="24h Fees" value={usd(data.fees24h)} change={data.changeFees} series={data.feeSpark} color="#f97316" />
-        <Kpi
-          label="Active Users (24h)"
-          value={compact(data.activeUsers)}
-          change={data.changeUsers}
-          series={data.userSpark}
-          color="#10b981"
-        />
-      </div>
+      {data.paymentStats ? (
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <Kpi
+            label="Lifetime Calls"
+            value={compact(data.paymentStats.lifetimeCalls)}
+            series={data.tvlSpark}
+            color="#3b82f6"
+          />
+          <Kpi
+            label="Logged Send Volume"
+            value={usd(data.paymentStats.loggedVolumeUsd)}
+            series={data.volSpark}
+            color="#8b5cf6"
+          />
+          <Kpi
+            label="Real Router Receive"
+            value={usd(data.paymentStats.routerReceivedUsd)}
+            series={data.feeSpark}
+            color="#10b981"
+          />
+          <Kpi
+            label="Real Router Send"
+            value={usd(data.paymentStats.routerSentUsd)}
+            series={data.userSpark}
+            color="#f97316"
+          />
+        </div>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <Kpi label="TVL" value={usd(data.tvlUsd)} change={data.change24h} series={data.tvlSpark} color="#3b82f6" />
+          <Kpi label="24h Volume" value={usd(data.volume24h)} change={data.changeVol} series={data.volSpark} color="#8b5cf6" />
+          <Kpi label="24h Fees" value={usd(data.fees24h)} change={data.changeFees} series={data.feeSpark} color="#f97316" />
+          <Kpi
+            label="Active Users (24h)"
+            value={compact(data.activeUsers)}
+            change={data.changeUsers}
+            series={data.userSpark}
+            color="#10b981"
+          />
+        </div>
+      )}
 
       <div className="flex gap-0.5 overflow-x-auto border-b border-ink-200">
         {TABS.map((t) => (

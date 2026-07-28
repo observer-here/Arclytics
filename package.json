@@ -8,6 +8,10 @@
     "dev:api": "pnpm --filter @arclytics/backend dev",
     "dev:all": "pnpm -r --parallel --filter @arclytics/backend --filter @arclytics/web dev",
     "ingest": "pnpm --filter @arclytics/backend ingest",
+    "ingest:batch": "pnpm --filter @arclytics/backend ingest:batch",
+    "ingest:full": "pnpm --filter @arclytics/backend ingest:full",
+    "ingest:tokens": "pnpm --filter @arclytics/backend ingest:tokens",
+    "deploy:api": "node scripts/deploy-api.mjs",
     "build": "pnpm --filter @arclytics/web build",
     "vercel-build": "pnpm --filter @arclytics/web build && rm -rf dist && cp -r apps/web/dist dist",
     "preview": "pnpm --filter @arclytics/web preview"

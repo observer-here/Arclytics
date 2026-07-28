@@ -1,8 +1,15 @@
-import { getDetail, getEco, getMeta } from "./db";
-import { activeRankings, ingestAll, ingestOne, ingestTvlFast } from "./compute";
+import { getDetail, getEco, getMeta, getTokens } from "./db";
+import {
+  activeRankings,
+  ingestAll,
+  ingestOne,
+  ingestRoundRobin,
+  ingestTvlFast,
+} from "./compute";
 import type { Env } from "./env";
 import { corsPreflight, json } from "./http";
 import { createArcscan } from "./arcscan";
+import { ingestTokens, maybeIngestTokens } from "./tokens";
 
 async function ensureSchema(env: Env) {
   await env.DB.batch([
@@ -16,6 +23,12 @@ async function ensureSchema(env: Env) {
       users INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slug, day))`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS eco_latest (
       id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS tokens_latest (
+      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS token_snaps (
+      address TEXT NOT NULL, day INTEGER NOT NULL, price REAL NOT NULL DEFAULT 0,
+      mcap REAL NOT NULL DEFAULT 0, holders INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (address, day))`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY, value TEXT NOT NULL)`),
   ]);
@@ -45,8 +58,21 @@ export default {
         await ensureSchema(env);
         const arc = createArcscan(env);
         const mode = new URL(req.url).searchParams.get("mode");
-        const result = mode === "tvl" ? await ingestTvlFast(env, arc) : await ingestAll(env, arc);
-        return json(result);
+        if (mode === "tokens") {
+          return json(await ingestTokens(env, arc));
+        }
+        const result =
+          mode === "tvl"
+            ? await ingestTvlFast(env, arc)
+            : mode === "batch"
+              ? await ingestRoundRobin(env, arc, 3)
+              : await ingestAll(env, arc);
+        // Refresh token cache after protocol ingest (throttled on batch)
+        const tokens =
+          mode === "batch"
+            ? await maybeIngestTokens(env, arc)
+            : await ingestTokens(env, arc).catch((e) => ({ error: String(e) }));
+        return json({ ...result, tokens });
       }
 
       if (path.startsWith("/v1/ingest/") && req.method === "POST") {
@@ -82,6 +108,18 @@ export default {
         return json(eco);
       }
 
+      if (path === "/v1/tokens" && req.method === "GET") {
+        const data = await getTokens(env);
+        if (!data?.items?.length) {
+          return json({
+            items: [],
+            stale: true,
+            message: "No data yet — run POST /v1/ingest?mode=tokens",
+          });
+        }
+        return json(data);
+      }
+
       return json({ error: "not found", path }, 404);
     } catch (err) {
       return json({ error: String(err) }, 500);
@@ -92,7 +130,9 @@ export default {
     ctx.waitUntil(
       (async () => {
         await ensureSchema(env);
-        await ingestAll(env, createArcscan(env));
+        const arc = createArcscan(env);
+        await ingestRoundRobin(env, arc, 3);
+        await maybeIngestTokens(env, arc, 10 * 60_000);
       })(),
     );
   },

@@ -108,6 +108,14 @@ export const arcscan = {
   tokens: (type = "ERC-20", params?: PageParams) =>
     paged<Record<string, unknown>>(`/tokens?type=${encodeURIComponent(type)}`, params),
   token: (address: string) => get<Record<string, unknown>>(`/tokens/${address}`),
+  tokenCounters: (address: string) =>
+    get<{ token_holders_count?: string; transfers_count?: string }>(
+      `/tokens/${address}/counters`,
+    ),
+  tokenHolders: (address: string, params?: PageParams) =>
+    paged<Record<string, unknown>>(`/tokens/${address}/holders`, params),
+  tokenTransfers: (address: string, params?: PageParams) =>
+    paged<Record<string, unknown>>(`/tokens/${address}/transfers`, params),
   mainPageBlocks: () => get<Array<Record<string, unknown>>>("/main-page/blocks"),
   blocksPage: (params?: PageParams) => paged<Record<string, unknown>>("/blocks", params),
   recentTransactions: async () => {

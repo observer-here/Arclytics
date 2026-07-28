@@ -5,6 +5,7 @@ export const paths = {
   protocol: (slug: string) => `/protocols/${slug}`,
   rankings: "/rankings",
   tokens: "/tokens",
+  tokensMarketCap: "/tokens/market-cap",
   token: (address: string) => `/tokens/${address}`,
   stablecoins: "/stablecoins",
   nfts: "/nfts",

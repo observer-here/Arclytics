@@ -13,6 +13,18 @@
     @apply min-h-screen bg-ink-50 text-ink-900 antialiased;
   }
 
+  #boot {
+    @apply fixed inset-0 z-[9999] flex items-center justify-center bg-ink-50 transition-opacity duration-200;
+  }
+
+  #boot img {
+    @apply h-12 w-12 rounded-lg object-contain;
+  }
+
+  #boot.boot-out {
+    @apply pointer-events-none opacity-0;
+  }
+
   a {
     @apply text-inherit no-underline;
   }
@@ -83,12 +95,14 @@
     @apply text-[13px] font-semibold text-ink-900;
   }
 
-  .sidebar-scroll {
+  .sidebar-scroll,
+  .no-scrollbar {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
 
-  .sidebar-scroll::-webkit-scrollbar {
+  .sidebar-scroll::-webkit-scrollbar,
+  .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
 

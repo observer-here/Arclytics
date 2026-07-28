@@ -47,6 +47,8 @@ export function getProtocol(slug: string): ProtocolConfig | undefined {
   return protocols.find((p) => p.slug === slug);
 }
 
+export * from "./logos";
+
 export * from "./xylonet";
 export * from "./synthra";
 export * from "./defi-on-arc";
