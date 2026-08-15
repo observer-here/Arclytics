@@ -10,7 +10,7 @@
 
   html,
   body {
-    @apply min-h-screen bg-ink-50 text-ink-900 antialiased;
+    @apply min-h-screen bg-ink-50 font-sans text-ink-900 antialiased;
   }
 
   #boot {

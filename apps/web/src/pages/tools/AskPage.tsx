@@ -130,7 +130,7 @@ export function AskPage() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [serverKey, setServerKey] = useState(false);
+  const [serverKey, setServerKey] = useState<boolean | null>(null);
   const [key, setKey] = useState(readAiKey);
   const [provider, setProvider] = useState<AskProvider>(readAiProvider);
   const box = useRef<HTMLDivElement>(null);
@@ -148,7 +148,7 @@ export function AskPage() {
   const send = async (text: string) => {
     const q = text.trim();
     if (!q || busy) return;
-    if (!serverKey && !key.trim()) {
+    if (serverKey === false && !key.trim()) {
       setErr("Paste an OpenAI, Groq, or OpenRouter API key first.");
       return;
     }
@@ -233,7 +233,7 @@ export function AskPage() {
                     key={p.title}
                     type="button"
                     onClick={() => send(p.q)}
-                    className="min-w-[200px] flex-1 rounded-2xl border border-ink-200 bg-white p-3.5 text-left shadow-sm transition hover:border-violet-300 hover:shadow"
+                    className="w-[210px] shrink-0 rounded-2xl border border-ink-200 bg-white p-3.5 text-left shadow-sm transition hover:border-violet-300 hover:shadow"
                   >
                     <span className={`grid h-8 w-8 place-items-center rounded-lg ${p.tone}`}>
                       <p.icon size={15} />
@@ -283,7 +283,7 @@ export function AskPage() {
 
       {err && <div className="px-1 pb-1 text-[11px] text-rose-600">{err}</div>}
 
-      {!serverKey && (
+      {serverKey === false && (
         <div className="mb-2 flex flex-wrap items-center gap-1.5 px-1">
           <select
             value={provider}
