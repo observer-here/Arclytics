@@ -5,7 +5,7 @@ export function json(data: unknown, status = 200, extra: HeadersInit = {}) {
       "content-type": "application/json; charset=utf-8",
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET,POST,OPTIONS",
-      "access-control-allow-headers": "content-type,authorization",
+      "access-control-allow-headers": "content-type,authorization,x-ai-key,x-ai-provider",
       ...extra,
     },
   });
@@ -17,7 +17,7 @@ export function corsPreflight() {
     headers: {
       "access-control-allow-origin": "*",
       "access-control-allow-methods": "GET,POST,OPTIONS",
-      "access-control-allow-headers": "content-type,authorization",
+      "access-control-allow-headers": "content-type,authorization,x-ai-key,x-ai-provider",
     },
   });
 }

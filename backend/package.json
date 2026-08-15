@@ -13,7 +13,8 @@
     "ingest": "node ../scripts/ingest-api.mjs",
     "ingest:full": "node ../scripts/ingest-api.mjs full",
     "ingest:batch": "node ../scripts/ingest-api.mjs batch",
-    "ingest:tokens": "node ../scripts/ingest-api.mjs tokens"
+    "ingest:tokens": "node ../scripts/ingest-api.mjs tokens",
+    "ingest:wallets": "node ../scripts/ingest-api.mjs wallets"
   },
   "dependencies": {
     "@arclytics/chain": "workspace:*",

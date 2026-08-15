@@ -26,8 +26,13 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
         className="relative min-w-0 flex-1"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!q.trim()) return;
-          navigate(`${paths.search}?q=${encodeURIComponent(q.trim())}`);
+          const query = q.trim();
+          if (!query) return;
+          if (/^0x[a-fA-F0-9]{40}$/.test(query)) {
+            navigate(`/address/${query.toLowerCase()}`);
+            return;
+          }
+          navigate(`${paths.search}?q=${encodeURIComponent(query)}`);
         }}
       >
         <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400">
@@ -59,7 +64,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
           className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-50"
           aria-label="Theme"
         >
-          <Icons.Moon size={14} />
+          <Icons.Sun size={14} />
         </button>
         <button
           type="button"

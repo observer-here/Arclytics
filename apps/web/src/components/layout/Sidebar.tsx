@@ -10,7 +10,6 @@ const iconMap = {
   Ecosystem: Icons.Ecosystem,
   DeFi: Icons.DeFi,
   Tokens: Icons.Tokens,
-  Stablecoins: Icons.Stablecoins,
   Nfts: Icons.Nfts,
   Bridges: Icons.Bridges,
   Contracts: Icons.Contracts,
@@ -19,6 +18,7 @@ const iconMap = {
   Explorer: Icons.Explorer,
   Wallet: Icons.Wallet,
   Compare: Icons.Compare,
+  Ask: Icons.Ask,
   Alerts: Icons.Alerts,
   Watchlist: Icons.Watchlist,
   Settings: Icons.Settings,
@@ -68,7 +68,7 @@ export function Sidebar({
   const blockSecs = avgBlockTime ? avgBlockTime / 1000 : undefined;
 
   return (
-    <aside className="flex h-screen w-[200px] flex-col border-r border-ink-200 bg-white">
+    <aside className="flex h-screen w-[180px] flex-col border-r border-ink-200 bg-white">
       <Link to={paths.home} onClick={onNavigate} className="flex shrink-0 items-center gap-2 px-2.5 py-2.5">
         <img src="/logo.png" alt="Arclytics" className="h-8 w-8 rounded-lg object-contain" />
         <div className="min-w-0 leading-tight">

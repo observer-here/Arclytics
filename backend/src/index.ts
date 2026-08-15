@@ -1,4 +1,4 @@
-import { getDetail, getEco, getMeta, getTokens } from "./db";
+import { getDetail, getEco, getMeta, getTokens, getWallets } from "./db";
 import {
   activeRankings,
   ingestAll,
@@ -10,6 +10,8 @@ import type { Env } from "./env";
 import { corsPreflight, json } from "./http";
 import { createArcscan } from "./arcscan";
 import { ingestTokens, maybeIngestTokens } from "./tokens";
+import { ingestWallets, maybeIngestWallets } from "./wallets";
+import { handleAsk } from "./ask";
 
 async function ensureSchema(env: Env) {
   await env.DB.batch([
@@ -24,6 +26,8 @@ async function ensureSchema(env: Env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS eco_latest (
       id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS tokens_latest (
+      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS wallets_latest (
       id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS token_snaps (
       address TEXT NOT NULL, day INTEGER NOT NULL, price REAL NOT NULL DEFAULT 0,
@@ -60,6 +64,9 @@ export default {
         const mode = new URL(req.url).searchParams.get("mode");
         if (mode === "tokens") {
           return json(await ingestTokens(env, arc));
+        }
+        if (mode === "wallets") {
+          return json(await ingestWallets(env, arc));
         }
         const result =
           mode === "tvl"
@@ -120,6 +127,29 @@ export default {
         return json(data);
       }
 
+      if (path === "/v1/ask" && (req.method === "GET" || req.method === "POST")) {
+        return handleAsk(req, env);
+      }
+
+      if (path === "/v1/wallets" && req.method === "GET") {
+        await ensureSchema(env);
+        let data = await getWallets(env);
+        if (!data?.items?.length) {
+          const arc = createArcscan(env);
+          await ingestWallets(env, arc).catch(() => null);
+          data = await getWallets(env);
+        }
+        if (!data?.items?.length) {
+          return json({
+            items: [],
+            stats: null,
+            stale: true,
+            message: "No wallet rankings yet — run POST /v1/ingest?mode=wallets",
+          });
+        }
+        return json(data);
+      }
+
       return json({ error: "not found", path }, 404);
     } catch (err) {
       return json({ error: String(err) }, 500);
@@ -133,6 +163,7 @@ export default {
         const arc = createArcscan(env);
         await ingestRoundRobin(env, arc, 3);
         await maybeIngestTokens(env, arc, 10 * 60_000);
+        await maybeIngestWallets(env, arc, 30 * 60_000);
       })(),
     );
   },

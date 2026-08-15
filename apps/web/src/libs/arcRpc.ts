@@ -116,9 +116,13 @@ export function subscribeRpcBlocks(onBlock: (block: LiveBlock) => void): () => v
     const n = Number.parseInt(numberHex, 16);
     if (!Number.isFinite(n) || n <= last) return;
     last = n;
-    const raw = await rpc<RpcBlock>("eth_getBlockByNumber", [numberHex, true]);
-    if (!raw) return;
-    onBlock(mapBlock(raw));
+    try {
+      const raw = await rpc<RpcBlock>("eth_getBlockByNumber", [numberHex, true]);
+      if (!raw) return;
+      onBlock(mapBlock(raw));
+    } catch {
+      // Arc RPC can flap (520); skip this head and wait for the next one
+    }
   };
 
   const connect = () => {

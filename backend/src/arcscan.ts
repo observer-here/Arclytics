@@ -34,7 +34,7 @@ export function createArcscan(env: Env) {
         });
         if (res.status === 429 || res.status >= 500) {
           lastErr = new Error(`ArcScan ${path} -> ${res.status}`);
-          await sleep(400 * 2 ** attempt);
+          await sleep(800 * 2 ** attempt);
           continue;
         }
         if (!res.ok) throw new Error(`ArcScan ${path} -> ${res.status}`);
@@ -82,6 +82,8 @@ export function createArcscan(env: Env) {
       ),
     tokenTransfers: (addr: string, params?: PageParams) =>
       paged<Record<string, unknown>>(`/tokens/${addr}/transfers`, params),
+    tokenHolders: (addr: string, params?: PageParams) =>
+      paged<Record<string, unknown>>(`/tokens/${addr}/holders`, params),
   };
 }
 

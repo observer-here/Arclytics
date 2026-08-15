@@ -163,3 +163,41 @@ export type TokenFeedRow = {
 export async function getTokens(): Promise<{ items: TokenFeedRow[]; updatedAt: number }> {
   return get<{ items: TokenFeedRow[]; updatedAt: number }>("/v1/tokens");
 }
+
+export type WalletFeedRow = {
+  address: string;
+  label: string;
+  name?: string;
+  netWorth: number;
+  change24h: number | null;
+  change7d: number | null;
+  txs24h: number;
+  txsTotal: number;
+  lastActive: string | null;
+  spark24h: number[];
+  spark7d: number[];
+  breakdown: { stable: number; defi: number; tokens: number; nft: number; other: number };
+};
+
+export async function getWallets(): Promise<{
+  items: WalletFeedRow[];
+  stats: Record<string, unknown> | null;
+  updatedAt?: number;
+  stale?: boolean;
+  message?: string;
+}> {
+  return get("/v1/wallets");
+}
+
+export type TokenHistory = {
+  mcap: Array<{ date: string; value: number }>;
+  volume: Array<{ date: string; value: number }>;
+};
+
+export async function getTokenHistory(address: string): Promise<TokenHistory> {
+  try {
+    return await get<TokenHistory>(`/v1/tokens/${encodeURIComponent(address)}/history`);
+  } catch {
+    return { mcap: [], volume: [] };
+  }
+}

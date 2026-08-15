@@ -27,7 +27,7 @@ export function AppShell({
       )}
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-[200px] transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-[180px] transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >

@@ -120,6 +120,11 @@ export const Icons = {
       <path d="M4 16V6a2 2 0 012-2h10" />
     </Svg>
   ),
+  Ask: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+    </Svg>
+  ),
   Alerts: (p: IconProps) => (
     <Svg {...p}>
       <path d="M6 9a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9" />
@@ -395,6 +400,24 @@ export const Icons = {
       <circle cx="6" cy="12" r="2.5" />
       <circle cx="18" cy="19" r="2.5" />
       <path d="M8.2 10.8l7.6-4.6M8.2 13.2l7.6 4.6" />
+    </Svg>
+  ),
+  Send: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M22 2L11 13" />
+      <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+    </Svg>
+  ),
+  Paperclip: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M21.4 11.6l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5" />
+    </Svg>
+  ),
+  Sparkles: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M12 3l1.2 4.2L17 8.5l-3.8 1.3L12 14l-1.2-4.2L7 8.5l3.8-1.3L12 3z" />
+      <path d="M19 14l.6 2 2 .6-2 .6-.6 2-.6-2-2-.6 2-.6.6-2z" />
+      <path d="M5 15l.5 1.5L7 17l-1.5.5L5 19l-.5-1.5L3 17l1.5-.5L5 15z" />
     </Svg>
   ),
   Verified: (p: IconProps) => (

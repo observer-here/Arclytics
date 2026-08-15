@@ -270,12 +270,12 @@ export function DonutChart({
 
   return (
     <div className={bare ? undefined : "card p-2.5"}>
-      <div className="panel-title mb-2">{title}</div>
+      {!bare && <div className="panel-title mb-2">{title}</div>}
       {!slices.length ? (
-        <div className="flex h-[140px] items-center justify-center text-xs text-ink-400">No data</div>
+        <div className="flex h-[100px] items-center justify-center text-xs text-ink-400">No data</div>
       ) : (
-        <div className="flex items-center gap-3">
-          <svg width="110" height="110" viewBox="0 0 110 110" className="shrink-0">
+        <div className="flex items-center gap-2">
+          <svg width={bare ? 88 : 110} height={bare ? 88 : 110} viewBox="0 0 110 110" className="shrink-0">
             <g transform="translate(55,55) rotate(-90)">
               {arcs.map((a) => (
                 <circle
@@ -296,14 +296,14 @@ export function DonutChart({
               {compact(total)}
             </text>
           </svg>
-          <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="min-w-0 flex-1 space-y-1">
             {arcs.map((a) => (
-              <div key={a.label} className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="flex min-w-0 items-center gap-1.5 text-ink-600">
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: a.color }} />
+              <div key={a.label} className="flex items-center justify-between gap-1.5 text-[10px]">
+                <span className="flex min-w-0 items-center gap-1 text-ink-600">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: a.color }} />
                   <span className="truncate">{a.label}</span>
                 </span>
-                <span className="shrink-0 font-medium text-ink-800">{a.pct.toFixed(1)}%</span>
+                <span className="shrink-0 font-medium text-ink-800">{a.pct.toFixed(0)}%</span>
               </div>
             ))}
           </div>

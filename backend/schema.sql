@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS tokens_latest (
   updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS wallets_latest (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  payload TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS token_snaps (
   address TEXT NOT NULL,
   day INTEGER NOT NULL,

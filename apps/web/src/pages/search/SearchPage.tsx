@@ -3,6 +3,19 @@ import { protocols } from "@arclytics/protocols";
 import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { arcscan } from "@/libs/arcscan";
+import { paths } from "@/routes/paths";
+
+function resultHref(r: Record<string, unknown>) {
+  const type = String(r.type ?? "");
+  const addr = String(r.address_hash ?? r.address ?? "");
+  if (type === "address" || type === "contract") return paths.address(addr);
+  if (type === "token" || addr) return paths.token(addr);
+  if (type === "transaction" || type === "block") {
+    const hash = String(r.transaction_hash ?? r.hash ?? "");
+    return hash ? `https://testnet.arcscan.app/tx/${hash}` : undefined;
+  }
+  return addr ? paths.token(addr) : undefined;
+}
 
 export function SearchPage() {
   const [searchParams] = useSearchParams();
@@ -42,12 +55,32 @@ export function SearchPage() {
         {results.slice(0, 20).map((r, i) => {
           const addr = String(r.address_hash ?? "");
           const label = String(r.name ?? r.symbol ?? addr ?? "result");
-          const href = addr ? `/tokens/${addr}` : undefined;
+          const href = resultHref(r);
+          const type = String(r.type ?? "result");
           return href ? (
-            <Link key={`${addr}-${i}`} to={href} className="block px-4 py-3 text-sm hover:bg-ink-50">
-              <span className="font-medium text-ink-800">{label}</span>
-              {addr ? <div className="font-mono text-xs text-ink-400">{addr}</div> : null}
-            </Link>
+            href.startsWith("http") ? (
+              <a
+                key={`${addr}-${i}`}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="block px-4 py-3 text-sm hover:bg-ink-50"
+              >
+                <span className="text-ink-400 capitalize">{type} · </span>
+                <span className="font-medium text-ink-800">{label}</span>
+                {addr ? <div className="font-mono text-xs text-ink-400">{addr}</div> : null}
+              </a>
+            ) : (
+              <Link
+                key={`${addr}-${i}`}
+                to={href}
+                className="block px-4 py-3 text-sm hover:bg-ink-50"
+              >
+                <span className="text-ink-400 capitalize">{type} · </span>
+                <span className="font-medium text-ink-800">{label}</span>
+                {addr ? <div className="font-mono text-xs text-ink-400">{addr}</div> : null}
+              </Link>
+            )
           ) : (
             <div key={`${label}-${i}`} className="px-4 py-3 font-mono text-xs text-ink-500">
               {label}

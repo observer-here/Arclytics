@@ -2,9 +2,7 @@ import { DashboardPage } from "@/pages/dashboard";
 import { EcosystemPage } from "@/pages/ecosystem/EcosystemPage";
 import { ProtocolDetailPage, RankingsPage } from "@/pages/protocols";
 import { TokensPage, TokenDetailPage, MarketCapPage } from "@/pages/tokens";
-import { StablecoinsPage } from "@/pages/stablecoins/StablecoinsPage";
 import { NftsPage } from "@/pages/nfts/NftsPage";
-import { BridgesPage } from "@/pages/bridges/BridgesPage";
 import { ContractsPage } from "@/pages/contracts/ContractsPage";
 import { AnalyticsPage } from "@/pages/analytics/AnalyticsPage";
 import {
@@ -12,10 +10,12 @@ import {
   BlocksPage,
   TransactionsPage,
   AddressesPage,
+  AddressDetailPage,
 } from "@/pages/explorer";
 import {
   WalletTrackerPage,
   ComparePage,
+  AskPage,
   AlertsPage,
   WatchlistPage,
   SettingsPage,
@@ -37,17 +37,18 @@ export function AppRoutes() {
       <Route path={paths.tokensMarketCap} element={<MarketCapPage />} />
       <Route path={paths.tokens} element={<TokensPage />} />
       <Route path="/tokens/:address" element={<TokenDetailPage />} />
-      <Route path={paths.stablecoins} element={<StablecoinsPage />} />
       <Route path={paths.nfts} element={<NftsPage />} />
-      <Route path={paths.bridges} element={<BridgesPage />} />
+      <Route path={paths.bridges} element={<Navigate to={paths.ecosystem} replace />} />
       <Route path={paths.contracts} element={<ContractsPage />} />
       <Route path={paths.analytics} element={<AnalyticsPage />} />
       <Route path={paths.explorer} element={<ExplorerPage />} />
       <Route path={paths.blocks} element={<BlocksPage />} />
       <Route path={paths.transactions} element={<TransactionsPage />} />
       <Route path={paths.addresses} element={<AddressesPage />} />
+      <Route path="/address/:address" element={<AddressDetailPage />} />
       <Route path={paths.walletTracker} element={<WalletTrackerPage />} />
       <Route path={paths.compare} element={<ComparePage />} />
+      <Route path={paths.ask} element={<AskPage />} />
       <Route path={paths.alerts} element={<AlertsPage />} />
       <Route path={paths.watchlist} element={<WatchlistPage />} />
       <Route path={paths.settings} element={<SettingsPage />} />
@@ -56,6 +57,7 @@ export function AppRoutes() {
       <Route path={paths.apiDocs} element={<ApiDocsPage />} />
 
       <Route path="/charts" element={<Navigate to={paths.analytics} replace />} />
+      <Route path="/stablecoins" element={<Navigate to={paths.tokens} replace />} />
       <Route path="/leaderboards" element={<Navigate to={paths.rankings} replace />} />
       <Route path="/blocks" element={<Navigate to={paths.blocks} replace />} />
       <Route path="/transactions" element={<Navigate to={paths.transactions} replace />} />

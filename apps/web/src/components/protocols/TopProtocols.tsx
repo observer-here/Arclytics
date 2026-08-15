@@ -1,22 +1,14 @@
 import { Link } from "react-router-dom";
-import { paths } from "@/routes/paths";
-import { usd } from "@/utils/format";
-import { CategoryFilter } from "@/components/shared/CategoryFilter";
 import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categories";
-import { useMemo, useState } from "react";
+import { paths } from "@/routes/paths";
+import { usd } from "@/utils/format";
 
 export function TopProtocols({
   rows,
 }: {
   rows: Array<{ slug: string; name: string; category: string; tvlUsd: number }>;
 }) {
-  const [category, setCategory] = useState<ProtocolCategoryFilter>("all");
-  const filtered = useMemo(
-    () => (category === "all" ? rows : rows.filter((r) => r.category === category)),
-    [rows, category],
-  );
-
   return (
     <div className="card p-2.5">
       <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -24,9 +16,6 @@ export function TopProtocols({
         <Link to={paths.ecosystem} className="text-[11px] font-medium text-arc-600 hover:text-arc-700">
           View all
         </Link>
-      </div>
-      <div className="mb-1.5 overflow-x-auto">
-        <CategoryFilter value={category} onChange={setCategory} />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
@@ -39,7 +28,7 @@ export function TopProtocols({
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 8).map((r, i) => (
+            {rows.slice(0, 8).map((r, i) => (
               <tr key={r.slug} className="border-t border-ink-100">
                 <td className="w-7 py-1.5 pr-0 text-ink-400">{i + 1}</td>
                 <td className="py-1.5 pl-1.5">
@@ -57,10 +46,10 @@ export function TopProtocols({
                 <td className="py-1.5 text-right font-medium text-ink-800">{usd(r.tvlUsd)}</td>
               </tr>
             ))}
-            {!filtered.length && (
+            {!rows.length && (
               <tr>
                 <td colSpan={4} className="py-4 text-center text-ink-400">
-                  No protocols in this category.
+                  No protocols
                 </td>
               </tr>
             )}

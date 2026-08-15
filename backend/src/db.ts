@@ -226,6 +226,28 @@ export async function changePct(
   return pct;
 }
 
+export async function chainTvlSeries(
+  env: Env,
+  days = 90,
+): Promise<Array<{ date: string; value: number }>> {
+  const today = dayKey();
+  const from = today - days + 1;
+  const { results } = await env.DB.prepare(
+    `SELECT day, SUM(tvl) AS value FROM protocol_snaps WHERE day >= ? GROUP BY day ORDER BY day`,
+  )
+    .bind(from)
+    .all<{ day: number; value: number }>();
+  const byDay = new Map((results ?? []).map((r) => [r.day, r.value]));
+  const out: Array<{ date: string; value: number }> = [];
+  let last = 0;
+  for (let d = from; d <= today; d++) {
+    const hit = byDay.get(d);
+    if (hit != null) last = hit;
+    out.push({ date: new Date(d * DAY_MS).toISOString().slice(0, 10), value: last });
+  }
+  return out;
+}
+
 export async function saveEco(env: Env, payload: unknown) {
   const at = Date.now();
   await env.DB.prepare(
@@ -265,6 +287,38 @@ export async function getTokens(env: Env): Promise<{ items: unknown[]; updatedAt
   const parsed = JSON.parse(row.payload) as { items?: unknown[]; updatedAt?: number };
   return {
     items: parsed.items ?? [],
+    updatedAt: parsed.updatedAt ?? row.updated_at,
+  };
+}
+
+export async function saveWallets(env: Env, payload: { items: unknown[]; stats: unknown; updatedAt: number }) {
+  await env.DB.prepare(
+    `INSERT INTO wallets_latest (id, payload, updated_at)
+     VALUES (1, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
+  )
+    .bind(JSON.stringify(payload), payload.updatedAt)
+    .run();
+}
+
+export async function getWallets(env: Env): Promise<{
+  items: unknown[];
+  stats: unknown;
+  updatedAt: number;
+} | null> {
+  const row = await env.DB.prepare(`SELECT payload, updated_at FROM wallets_latest WHERE id = 1`).first<{
+    payload: string;
+    updated_at: number;
+  }>();
+  if (!row) return null;
+  const parsed = JSON.parse(row.payload) as {
+    items?: unknown[];
+    stats?: unknown;
+    updatedAt?: number;
+  };
+  return {
+    items: parsed.items ?? [],
+    stats: parsed.stats ?? null,
     updatedAt: parsed.updatedAt ?? row.updated_at,
   };
 }

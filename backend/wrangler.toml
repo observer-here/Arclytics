@@ -25,6 +25,9 @@ crons = ["*/10 * * * *"]
 [vars]
 ARCSCAN_BASE = "https://testnet.arcscan.app/api/v2"
 ARCSCAN_STATS = "https://testnet.arcscan.app/stats-service/api/v1"
+AI_BASE_URL = "https://api.groq.com/openai/v1"
+AI_MODEL = "llama-3.1-8b-instant"
+ARC_RPC = "https://rpc.testnet.arc.network"
 
 [observability]
 enabled = true

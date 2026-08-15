@@ -126,13 +126,17 @@ export const arcscan = {
     paged<Record<string, unknown>>("/transactions", params),
   search: (q: string) =>
     get<Array<Record<string, unknown>>>(`/search/quick?q=${encodeURIComponent(q)}`),
-  addressTokens: (address: string) =>
+  addressTokens: (address: string, type = "ERC-20") =>
     get<{ items: Array<Record<string, unknown>> }>(
-      `/addresses/${address}/tokens?type=ERC-20`,
+      `/addresses/${address}/tokens?type=${encodeURIComponent(type)}`,
     ),
   addressCounters: (address: string) =>
     get<Record<string, string>>(`/addresses/${address}/counters`),
   address: (address: string) => get<Record<string, unknown>>(`/addresses/${address}`),
+  coinBalanceHistoryByDay: (address: string) =>
+    get<{ items?: Array<{ date?: string; value?: string }> }>(
+      `/addresses/${address}/coin-balance-history-by-day`,
+    ),
   addressTokenTransfers: (address: string, params?: PageParams) =>
     paged<Record<string, unknown>>(`/addresses/${address}/token-transfers`, params),
   addressTransactions: (address: string, params?: PageParams) =>
