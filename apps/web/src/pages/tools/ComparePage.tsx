@@ -522,19 +522,19 @@ export function ComparePage() {
         key: "tvlCh",
         label: "TVL Change (30D)",
         values: items.map((p) => p.change1m ?? details[p.slug]?.change24h ?? p.change24h ?? 0),
-        format: pct,
+        format: (n) => pct(n) ?? "—",
       },
       {
         key: "volCh",
         label: "Volume Change (30D)",
         values: items.map((p) => details[p.slug]?.changeVol ?? p.change24h ?? 0),
-        format: pct,
+        format: (n) => pct(n) ?? "—",
       },
       {
         key: "feeCh",
         label: "Fees Change (30D)",
         values: items.map((p) => details[p.slug]?.changeFees ?? 0),
-        format: pct,
+        format: (n) => pct(n) ?? "—",
       },
     ];
     return rows;

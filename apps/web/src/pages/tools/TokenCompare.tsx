@@ -483,7 +483,7 @@ export function TokenCompare() {
           (tx.to as { hash?: string } | undefined)?.hash ?? tx.to_address_hash ?? tx.to ?? "",
         );
         const dec = d?.decimals ?? 18;
-        const raw = Number(tx.total?.value ?? tx.value ?? 0) / 10 ** dec;
+        const raw = Number((tx.total as { value?: unknown } | undefined)?.value ?? tx.value ?? 0) / 10 ** dec;
         const price = d?.price ?? 0;
         const ts = tx.timestamp ? new Date(String(tx.timestamp)) : null;
         rows.push({
