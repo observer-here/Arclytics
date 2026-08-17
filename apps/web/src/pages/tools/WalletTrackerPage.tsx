@@ -82,7 +82,7 @@ export function WalletTrackerPage() {
   const activity = data?.activity ?? [];
 
   const toggleWatch = (addr: string) => {
-    toggleStar("wallet", addr);
+    void toggleStar("wallet", addr);
   };
 
   const addWallet = () => {

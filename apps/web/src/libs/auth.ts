@@ -52,7 +52,7 @@ function clear() {
   ping();
 }
 
-async function authFetch(path: string, init: RequestInit = {}) {
+export async function authFetch(path: string, init: RequestInit = {}) {
   const token = sessionToken();
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,

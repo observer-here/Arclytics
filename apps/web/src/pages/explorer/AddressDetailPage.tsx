@@ -7,7 +7,7 @@ import { TokenIcon } from "@/components/shared/TokenIcon";
 import { explorerUrl } from "@/config/network";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadAddressDetail, type AddressTx } from "@/libs/addressDetail";
-import { isWatched, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
+import { isWatched, subscribeWatch, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { ago, compact, shortHash, usd, usdc } from "@/utils/format";
 
@@ -183,6 +183,7 @@ export function AddressDetailPage() {
     setTxPage(1);
     setTokenPage(1);
     setWatched(isWatched("wallet", address));
+    return subscribeWatch(() => setWatched(isWatched("wallet", address)));
   }, [address]);
 
   const spark = useMemo(
@@ -206,8 +207,7 @@ export function AddressDetailPage() {
   const title = data.name || data.ens || display;
 
   const toggleWatch = () => {
-    toggleWatchItem("wallet", data.address);
-    setWatched(isWatched("wallet", data.address));
+    void toggleWatchItem("wallet", data.address);
   };
 
   const copyAddr = async () => {

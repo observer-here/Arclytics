@@ -24,3 +24,20 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users (username);
+
+CREATE TABLE IF NOT EXISTS watch_items (
+  user_id TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  item_id TEXT NOT NULL,
+  list TEXT NOT NULL,
+  added_at INTEGER NOT NULL,
+  PRIMARY KEY (user_id, kind, item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_watch_items_user ON watch_items (user_id);
+
+CREATE TABLE IF NOT EXISTS watch_lists (
+  user_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  PRIMARY KEY (user_id, name)
+);

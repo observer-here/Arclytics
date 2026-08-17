@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS eco_latest (
   updated_at INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS tokens_latest (
-  id INTEGER PRIMARY KEY CHECK (id = 1),
+CREATE TABLE IF NOT EXISTS token_latest (
+  address TEXT PRIMARY KEY,
   payload TEXT NOT NULL,
   updated_at INTEGER NOT NULL
 );

@@ -36,7 +36,7 @@ function publicUser(user: User) {
   };
 }
 
-async function sessionUser(req: Request, env: Env) {
+export async function sessionUser(req: Request, env: Env) {
   const h = req.headers.get("authorization") ?? "";
   const raw = h.startsWith("Bearer ") ? h.slice(7).trim() : "";
   if (!raw) return null;

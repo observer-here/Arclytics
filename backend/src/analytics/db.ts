@@ -96,8 +96,8 @@ export async function ensureAnalyticsSchema(env: Env) {
       users INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slug, day))`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS eco_latest (
       id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS tokens_latest (
-      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS token_latest (
+      address TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS wallets_latest (
       id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS token_snaps (
@@ -107,6 +107,7 @@ export async function ensureAnalyticsSchema(env: Env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS meta (
       key TEXT PRIMARY KEY, value TEXT NOT NULL)`),
   ]);
+  await migrateTokenBlob(env);
 }
 
 export async function saveRanking(env: Env, row: RankingRow) {
@@ -293,27 +294,48 @@ export async function getEco(env: Env) {
   return { ...(JSON.parse(row.payload) as Record<string, unknown>), updatedAt: row.updated_at };
 }
 
-export async function saveTokens(env: Env, payload: { items: unknown[]; updatedAt: number }) {
+export async function saveToken(env: Env, row: { address: string }, updatedAt = Date.now()) {
+  const address = String(row.address).toLowerCase();
+  const payload = { ...row, address, updatedAt };
   await env.DB.prepare(
-    `INSERT INTO tokens_latest (id, payload, updated_at)
-     VALUES (1, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
+    `INSERT INTO token_latest (address, payload, updated_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(address) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
   )
-    .bind(JSON.stringify(payload), payload.updatedAt)
+    .bind(address, JSON.stringify(payload), updatedAt)
     .run();
 }
 
+async function migrateTokenBlob(env: Env) {
+  const n = await env.DB.prepare(`SELECT COUNT(*) AS n FROM token_latest`).first<{ n: number }>();
+  if ((n?.n ?? 0) > 0) return;
+  let blob: { payload: string; updated_at: number } | null = null;
+  try {
+    blob = await env.DB.prepare(`SELECT payload, updated_at FROM tokens_latest WHERE id = 1`).first<{
+      payload: string;
+      updated_at: number;
+    }>();
+  } catch {
+    return;
+  }
+  if (!blob) return;
+  const items = (JSON.parse(blob.payload) as { items?: Array<{ address?: string }> }).items ?? [];
+  for (const item of items) {
+    if (!item.address) continue;
+    await saveToken(env, item as { address: string }, blob.updated_at);
+  }
+}
+
 export async function getTokens(env: Env): Promise<{ items: unknown[]; updatedAt: number } | null> {
-  const row = await env.DB.prepare(`SELECT payload, updated_at FROM tokens_latest WHERE id = 1`).first<{
+  const { results } = await env.DB.prepare(`SELECT payload, updated_at FROM token_latest`).all<{
     payload: string;
     updated_at: number;
   }>();
-  if (!row) return null;
-  const parsed = JSON.parse(row.payload) as { items?: unknown[]; updatedAt?: number };
-  return {
-    items: parsed.items ?? [],
-    updatedAt: parsed.updatedAt ?? row.updated_at,
-  };
+  if (!results?.length) return null;
+  const items = results
+    .map((r) => JSON.parse(r.payload) as { interest?: number })
+    .sort((a, b) => (b.interest ?? 0) - (a.interest ?? 0));
+  return { items, updatedAt: Math.max(...results.map((r) => r.updated_at)) };
 }
 
 export async function saveWallets(env: Env, payload: { items: unknown[]; stats: unknown; updatedAt: number }) {

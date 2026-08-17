@@ -88,6 +88,13 @@ export async function ensureUserSchema(env: Env) {
       hash TEXT PRIMARY KEY, user_id TEXT NOT NULL,
       expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL)`),
     env.USER_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id)`),
+    env.USER_DB.prepare(`CREATE TABLE IF NOT EXISTS watch_items (
+      user_id TEXT NOT NULL, kind TEXT NOT NULL, item_id TEXT NOT NULL,
+      list TEXT NOT NULL, added_at INTEGER NOT NULL,
+      PRIMARY KEY (user_id, kind, item_id))`),
+    env.USER_DB.prepare(`CREATE INDEX IF NOT EXISTS idx_watch_items_user ON watch_items (user_id)`),
+    env.USER_DB.prepare(`CREATE TABLE IF NOT EXISTS watch_lists (
+      user_id TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (user_id, name))`),
   ]);
   await env.USER_DB.prepare(`ALTER TABLE users ADD COLUMN username TEXT`).run().catch(() => undefined);
   await env.USER_DB.prepare(`ALTER TABLE users ADD COLUMN wallet TEXT`).run().catch(() => undefined);
@@ -228,4 +235,116 @@ export async function deleteSession(env: Env, hash: string) {
 
 export async function deleteUserSessions(env: Env, userId: string) {
   await env.USER_DB.prepare(`DELETE FROM sessions WHERE user_id = ?`).bind(userId).run();
+}
+
+export const WATCH_KINDS = ["token", "protocol", "wallet", "contract"] as const;
+export type WatchKind = (typeof WATCH_KINDS)[number];
+
+export type WatchItem = {
+  id: string;
+  kind: WatchKind;
+  list: string;
+  addedAt: number;
+};
+
+const BASE_WATCH_LISTS = ["Assets", "DeFi", "Whales", "Infra", "Watch Later"];
+
+export function parseWatchKind(raw: unknown): WatchKind | null {
+  const k = String(raw ?? "");
+  return (WATCH_KINDS as readonly string[]).includes(k) ? (k as WatchKind) : null;
+}
+
+function watchId(id: string) {
+  return id.trim().toLowerCase();
+}
+
+function listName(raw: string) {
+  const n = raw.trim().slice(0, 40);
+  return n || null;
+}
+
+export async function listWatch(env: Env, userId: string) {
+  const itemsQ = env.USER_DB.prepare(
+    `SELECT kind, item_id, list, added_at FROM watch_items WHERE user_id = ? ORDER BY added_at DESC`,
+  )
+    .bind(userId)
+    .all<{ kind: WatchKind; item_id: string; list: string; added_at: number }>();
+  const listsQ = env.USER_DB.prepare(`SELECT name FROM watch_lists WHERE user_id = ?`)
+    .bind(userId)
+    .all<{ name: string }>();
+  const [itemsRes, listsRes] = await Promise.all([itemsQ, listsQ]);
+  const items: WatchItem[] = (itemsRes.results ?? []).map((r) => ({
+    id: r.item_id,
+    kind: r.kind,
+    list: r.list,
+    addedAt: r.added_at,
+  }));
+  const lists = [
+    ...new Set([...BASE_WATCH_LISTS, ...(listsRes.results ?? []).map((r) => r.name), ...items.map((i) => i.list)]),
+  ];
+  return { items, lists };
+}
+
+export async function addWatchItem(env: Env, userId: string, kind: WatchKind, rawId: string, list?: string) {
+  const id = watchId(rawId);
+  if (!id) return null;
+  const named = listName(list || "") ?? defaultList(kind);
+  const exists = await env.USER_DB.prepare(
+    `SELECT 1 AS ok FROM watch_items WHERE user_id = ? AND kind = ? AND item_id = ?`,
+  )
+    .bind(userId, kind, id)
+    .first();
+  if (!exists) {
+    const row = await env.USER_DB.prepare(`SELECT COUNT(*) AS n FROM watch_items WHERE user_id = ?`)
+      .bind(userId)
+      .first<{ n: number }>();
+    if (Number(row?.n ?? 0) >= 200) return null;
+  }
+  const now = Date.now();
+  await env.USER_DB.prepare(
+    `INSERT INTO watch_items (user_id, kind, item_id, list, added_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, kind, item_id) DO NOTHING`,
+  )
+    .bind(userId, kind, id, named, now)
+    .run();
+  return listWatch(env, userId);
+}
+
+function defaultList(kind: WatchKind) {
+  if (kind === "token") return "Assets";
+  if (kind === "protocol") return "DeFi";
+  if (kind === "wallet") return "Whales";
+  return "Infra";
+}
+
+export async function removeWatchItem(env: Env, userId: string, kind: WatchKind, rawId: string) {
+  const id = watchId(rawId);
+  if (!id) return listWatch(env, userId);
+  await env.USER_DB.prepare(`DELETE FROM watch_items WHERE user_id = ? AND kind = ? AND item_id = ?`)
+    .bind(userId, kind, id)
+    .run();
+  return listWatch(env, userId);
+}
+
+export async function moveWatchItem(env: Env, userId: string, kind: WatchKind, rawId: string, rawList: string) {
+  const id = watchId(rawId);
+  const named = listName(rawList);
+  if (!id || !named) return listWatch(env, userId);
+  await env.USER_DB.prepare(
+    `UPDATE watch_items SET list = ? WHERE user_id = ? AND kind = ? AND item_id = ?`,
+  )
+    .bind(named, userId, kind, id)
+    .run();
+  return listWatch(env, userId);
+}
+
+export async function addWatchList(env: Env, userId: string, raw: string) {
+  const named = listName(raw);
+  if (!named) return listWatch(env, userId);
+  await env.USER_DB.prepare(
+    `INSERT INTO watch_lists (user_id, name) VALUES (?, ?) ON CONFLICT(user_id, name) DO NOTHING`,
+  )
+    .bind(userId, named)
+    .run();
+  return listWatch(env, userId);
 }

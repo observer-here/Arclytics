@@ -7,7 +7,7 @@ import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categorie
 import { CATEGORY_PILL } from "@/config/ecosystem";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadProtocolDetail } from "@/libs/protocolDetail";
-import { isWatched, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
+import { isWatched, subscribeWatch, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { ago, compact, shortHash, usd } from "@/utils/format";
 
@@ -108,6 +108,7 @@ export function ProtocolDetailPage() {
   useEffect(() => {
     setTab("Overview");
     setWatched(isWatched("protocol", slug));
+    return subscribeWatch(() => setWatched(isWatched("protocol", slug)));
   }, [slug]);
 
   const category = useMemo(() => {
@@ -123,8 +124,7 @@ export function ProtocolDetailPage() {
   const pill = CATEGORY_PILL[protocol.category] ?? CATEGORY_PILL.other;
 
   const toggleWatch = () => {
-    toggleWatchItem("protocol", slug);
-    setWatched(isWatched("protocol", slug));
+    void toggleWatchItem("protocol", slug);
   };
 
   const share = async () => {

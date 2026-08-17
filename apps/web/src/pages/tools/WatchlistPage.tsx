@@ -4,7 +4,9 @@ import { Icons } from "@/components/shared/Icons";
 import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { TokenIcon } from "@/components/shared/TokenIcon";
 import { useAsyncData } from "@/hooks/useAsyncData";
+import { useAuth } from "@/hooks/useAuth";
 import { getProtocolRankings, getTokens, getWallets } from "@/libs/api";
+import { loginWithMagic } from "@/libs/auth";
 import { loadNftDashboard } from "@/libs/nfts";
 import {
   addList,
@@ -61,6 +63,8 @@ function fmtShort(ts: number) {
 }
 
 export function WatchlistPage() {
+  const user = useAuth();
+  const [busy, setBusy] = useState(false);
   const [entries, setEntries] = useState<WatchEntry[]>(readWatchlist);
   const [tab, setTab] = useState<"all" | WatchKind>("all");
   const [list, setList] = useState("all");
@@ -208,16 +212,26 @@ export function WatchlistPage() {
   }, [addKind, addQ, data]);
 
   function add(kind: WatchKind, id: string) {
-    addWatch(kind, id);
-    setEntries(readWatchlist());
+    void addWatch(kind, id);
     setAddOpen(false);
     setAddQ("");
   }
 
   function drop(kind: WatchKind, id: string) {
-    removeWatch(kind, id);
-    setEntries(readWatchlist());
+    void removeWatch(kind, id);
     setMenu(null);
+  }
+
+  async function signIn() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await loginWithMagic();
+    } catch {
+      /* cancelled */
+    } finally {
+      setBusy(false);
+    }
   }
 
   const chips: Array<{ id: "all" | WatchKind; label: string; n: number }> = [
@@ -227,6 +241,26 @@ export function WatchlistPage() {
     { id: "wallet", label: "Wallets", n: counts.wallet },
     { id: "contract", label: "Contracts", n: counts.contract },
   ];
+
+  if (!user) {
+    return (
+      <div>
+        <h1 className="flex items-center gap-2 text-[15px] font-semibold text-ink-900">
+          <Icons.Watchlist size={16} className="text-arc-600" />
+          Watchlist
+        </h1>
+        <p className="mt-1 text-[13px] text-ink-500">Sign in to save tokens, protocols, wallets and contracts to your account.</p>
+        <button
+          type="button"
+          onClick={() => void signIn()}
+          disabled={busy}
+          className="mt-3 rounded-lg bg-gradient-to-r from-arc-600 to-indigo-600 px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-60"
+        >
+          {busy ? "Signing in…" : "Sign in"}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -520,10 +554,11 @@ export function WatchlistPage() {
                   e.preventDefault();
                   const name = newList.trim();
                   if (name) {
-                    addList(name);
-                    setListNames(readLists());
-                    setList(name);
-                    setPage(1);
+                    void addList(name).then(() => {
+                      setListNames(readLists());
+                      setList(name);
+                      setPage(1);
+                    });
                   }
                   setNewList("");
                   setShowNew(false);

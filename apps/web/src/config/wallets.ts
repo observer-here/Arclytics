@@ -35,4 +35,3 @@ export const WALLET_LABEL_PILL: Record<WalletLabel, string> = {
 export const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 
 export const TRACKED_KEY = "arclytics:tracked-wallets";
-export const WATCHLIST_KEY = "arclytics:wallet-watchlist";

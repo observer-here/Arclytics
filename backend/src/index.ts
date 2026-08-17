@@ -7,12 +7,13 @@ import {
   ingestTvlFast,
 } from "./analytics/ingest/compute";
 import { createArcscan } from "./analytics/arcscan";
-import { ingestTokens, maybeIngestTokens } from "./analytics/ingest/tokens";
+import { ingestTokens, ingestTokensRoundRobin } from "./analytics/ingest/tokens";
 import { ingestWallets, maybeIngestWallets } from "./analytics/ingest/wallets";
 import { handleAsk } from "./ask";
 import type { Env } from "./lib/env";
 import { corsPreflight, json } from "./lib/http";
 import { handleAuth } from "./user/auth";
+import { handleWatchlist } from "./user/watchlist";
 
 function authorized(req: Request, env: Env) {
   if (!env.INGEST_SECRET) return true;
@@ -50,11 +51,7 @@ export default {
             : mode === "batch"
               ? await ingestRoundRobin(env, arc, 3)
               : await ingestAll(env, arc);
-        // Refresh token cache after protocol ingest (throttled on batch)
-        const tokens =
-          mode === "batch"
-            ? await maybeIngestTokens(env, arc)
-            : await ingestTokens(env, arc).catch((e) => ({ error: String(e) }));
+        const tokens = await ingestTokensRoundRobin(env, arc, 3).catch((e) => ({ error: String(e) }));
         return json({ ...result, tokens });
       }
 
@@ -92,6 +89,7 @@ export default {
       }
 
       if (path === "/v1/tokens" && req.method === "GET") {
+        await ensureAnalyticsSchema(env);
         const data = await getTokens(env);
         if (!data?.items?.length) {
           return json({
@@ -105,6 +103,10 @@ export default {
 
       if (path.startsWith("/v1/auth")) {
         return handleAuth(req, env);
+      }
+
+      if (path.startsWith("/v1/watchlist")) {
+        return handleWatchlist(req, env);
       }
 
       if (path === "/v1/ask" && (req.method === "GET" || req.method === "POST")) {
@@ -142,7 +144,7 @@ export default {
         await ensureAnalyticsSchema(env);
         const arc = createArcscan(env);
         await ingestRoundRobin(env, arc, 3);
-        await maybeIngestTokens(env, arc, 10 * 60_000);
+        await ingestTokensRoundRobin(env, arc, 3);
         await maybeIngestWallets(env, arc, 30 * 60_000);
       })(),
     );

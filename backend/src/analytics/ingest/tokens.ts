@@ -3,9 +3,8 @@ import type { Arcscan } from "../arcscan";
 import {
   dayKey,
   getMeta,
-  getTokens,
+  saveToken,
   saveTokenSnap,
-  saveTokens,
   seedTokenSnapPrice,
   setMeta,
   tokenChangePct,
@@ -394,33 +393,40 @@ async function buildRow(env: Env, arc: Arcscan, meta: CuratedToken): Promise<Tok
   };
 }
 
-/** Ingest curated tokens into D1 (same pattern as protocol rankings). */
-export async function ingestTokens(env: Env, arc: Arcscan) {
-  const items: TokenRow[] = [];
-  for (const meta of CURATED_TOKENS) {
-    try {
-      const row = await buildRow(env, arc, meta);
-      if (row) items.push(row);
-    } catch {
-      // soft-fail per token
-    }
-    await sleep(100);
+async function ingestOneToken(env: Env, arc: Arcscan, meta: CuratedToken) {
+  try {
+    const row = await buildRow(env, arc, meta);
+    if (!row) return { address: meta.address, ok: false };
+    await saveToken(env, row);
+    return { address: row.address, ok: true };
+  } catch (err) {
+    return { address: meta.address, error: String(err) };
   }
-
-  items.sort((a, b) => b.interest - a.interest);
-  const prev = await getTokens(env);
-  if (!items.length && prev?.items?.length) {
-    return { ok: true, count: 0, kept: true };
-  }
-
-  const updatedAt = Date.now();
-  await saveTokens(env, { items, updatedAt });
-  await setMeta(env, "last_tokens_ingest", String(updatedAt));
-  return { ok: true, count: items.length };
 }
 
-export async function maybeIngestTokens(env: Env, arc: Arcscan, minAgeMs = 10 * 60_000) {
-  const last = Number((await getMeta(env, "last_tokens_ingest")) ?? "0") || 0;
-  if (Date.now() - last < minAgeMs) return { skipped: true, last };
-  return ingestTokens(env, arc);
+/** Full pass — upserts each token row; never replaces the whole list. */
+export async function ingestTokens(env: Env, arc: Arcscan) {
+  const results = [];
+  for (const meta of CURATED_TOKENS) {
+    results.push(await ingestOneToken(env, arc, meta));
+    await sleep(100);
+  }
+  await setMeta(env, "last_tokens_ingest", String(Date.now()));
+  return { ok: true, count: results.filter((r) => r.ok).length, total: CURATED_TOKENS.length, results };
+}
+
+/** Cron-safe: ingest a few tokens per tick (same as protocol round-robin). */
+export async function ingestTokensRoundRobin(env: Env, arc: Arcscan, batchSize = 3) {
+  const n = CURATED_TOKENS.length;
+  const cursor = Number((await getMeta(env, "token_ingest_cursor")) ?? "0") || 0;
+  const start = ((cursor % n) + n) % n;
+  const results = [];
+  const take = Math.min(batchSize, n);
+  for (let i = 0; i < take; i++) {
+    results.push(await ingestOneToken(env, arc, CURATED_TOKENS[(start + i) % n]));
+    await sleep(400);
+  }
+  await setMeta(env, "token_ingest_cursor", String((start + take) % n));
+  await setMeta(env, "last_tokens_ingest", String(Date.now()));
+  return { ok: true, mode: "round-robin", start, results };
 }

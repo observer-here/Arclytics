@@ -14,7 +14,7 @@ import { TokenIcon } from "@/components/shared/TokenIcon";
 import { AMM_LABEL, TOKEN_CATEGORY_PILL } from "@/config/tokens";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadTokenDetail } from "@/libs/tokenDetail";
-import { isWatched, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
+import { isWatched, subscribeWatch, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { ago, compact, pct, shortHash, usd } from "@/utils/format";
 
@@ -76,6 +76,7 @@ export function TokenDetailPage() {
   useEffect(() => {
     setTab("Overview");
     setWatched(isWatched("token", address));
+    return subscribeWatch(() => setWatched(isWatched("token", address)));
   }, [address]);
 
   if (loading) return <div className="text-sm text-ink-400">Loading…</div>;
@@ -95,8 +96,7 @@ export function TokenDetailPage() {
   const chain = getChain();
 
   const toggleWatch = () => {
-    toggleWatchItem("token", address);
-    setWatched(isWatched("token", address));
+    void toggleWatchItem("token", address);
   };
 
   const copyAddr = async () => {

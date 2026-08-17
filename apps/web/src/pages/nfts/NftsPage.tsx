@@ -52,7 +52,7 @@ export function NftsPage() {
   const activity = data?.activity ?? [];
 
   const toggleWatch = (addr: string) => {
-    toggleStar("contract", addr);
+    void toggleStar("contract", addr);
   };
 
   const filtered = useMemo(() => {
