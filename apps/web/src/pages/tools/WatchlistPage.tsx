@@ -264,15 +264,23 @@ export function WatchlistPage() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-[15px] font-semibold text-ink-900">
-            <Icons.Watchlist size={16} className="text-arc-600" />
-            Watchlist
-          </h1>
-          <p className="mt-0.5 text-[12px] text-ink-500">Track tokens, protocols, wallets and contracts that matter to you.</p>
-        </div>
-        <div className="relative flex shrink-0 gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {chips.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => {
+              setTab(c.id);
+              setPage(1);
+            }}
+            className={`rounded-full px-3 py-1 text-[12px] ${
+              tab === c.id ? "bg-arc-600 font-medium text-white" : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
+            }`}
+          >
+            {c.label} {c.n}
+          </button>
+        ))}
+        <div className="relative ml-auto flex shrink-0 gap-2">
           <button
             type="button"
             onClick={() => document.getElementById("watch-lists")?.scrollIntoView({ behavior: "smooth" })}
@@ -328,24 +336,6 @@ export function WatchlistPage() {
             </div>
           ) : null}
         </div>
-      </div>
-
-      <div className="flex flex-wrap gap-1.5">
-        {chips.map((c) => (
-          <button
-            key={c.id}
-            type="button"
-            onClick={() => {
-              setTab(c.id);
-              setPage(1);
-            }}
-            className={`rounded-full px-3 py-1 text-[12px] ${
-              tab === c.id ? "bg-arc-600 font-medium text-white" : "border border-ink-200 bg-white text-ink-600 hover:bg-ink-50"
-            }`}
-          >
-            {c.label} {c.n}
-          </button>
-        ))}
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_240px]">
