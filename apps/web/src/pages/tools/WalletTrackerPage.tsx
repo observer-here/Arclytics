@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DonutChart } from "@/components/charts/Charts";
 import { MetricCard } from "@/components/ecosystem/MetricCard";
@@ -7,10 +7,10 @@ import {
   ADDR_RE,
   TRACKED_KEY,
   WALLET_LABEL_PILL,
+  WATCHLIST_KEY,
   type WalletLabel,
 } from "@/config/wallets";
 import { useAsyncData } from "@/hooks/useAsyncData";
-import { isWatched, subscribeWatch, toggleWatch as toggleStar } from "@/libs/watchlist";
 import { loadWalletDashboard } from "@/libs/wallets";
 import { clearCache } from "@/libs/queryCache";
 import { paths } from "@/routes/paths";
@@ -63,11 +63,9 @@ export function WalletTrackerPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [rev, setRev] = useState(0);
+  const [watchlist, setWatchlist] = useState<string[]>(() => readList(WATCHLIST_KEY));
   const [tracked, setTracked] = useState<string[]>(() => readList(TRACKED_KEY));
   const [reload, setReload] = useState(0);
-
-  useEffect(() => subscribeWatch(() => setRev((n) => n + 1)), []);
 
   const loader = useCallback(
     () => loadWalletDashboard(tracked),
@@ -82,7 +80,11 @@ export function WalletTrackerPage() {
   const activity = data?.activity ?? [];
 
   const toggleWatch = (addr: string) => {
-    toggleStar("wallet", addr);
+    setWatchlist((prev) => {
+      const next = prev.includes(addr) ? prev.filter((a) => a !== addr) : [...prev, addr];
+      writeList(WATCHLIST_KEY, next);
+      return next;
+    });
   };
 
   const addWallet = () => {
@@ -199,7 +201,8 @@ export function WalletTrackerPage() {
               />
             </div>
 
-            <table className="w-full text-left text-[12px]">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[920px] text-left text-[12px]">
                 <thead>
                   <tr className="border-b border-ink-100 text-[11px] text-ink-400">
                     <th className="w-8 px-3 py-2.5 font-medium">#</th>
@@ -216,7 +219,7 @@ export function WalletTrackerPage() {
                 <tbody>
                   {pageRows.map((w, i) => {
                     const rank = (page - 1) * pageSize + i + 1;
-                    const starred = rev >= 0 && isWatched("wallet", w.address);
+                    const starred = watchlist.includes(w.address);
                     const up24 = (w.change24h ?? 0) >= 0;
                     const up7 = (w.change7d ?? 0) >= 0;
                     return (
@@ -291,6 +294,7 @@ export function WalletTrackerPage() {
                   )}
                 </tbody>
               </table>
+            </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 px-3 py-2 text-[11px] text-ink-500">
               <span>
@@ -342,7 +346,8 @@ export function WalletTrackerPage() {
                 View all
               </a>
             </div>
-            <table className="w-full text-left text-[12px]">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-[12px]">
                 <thead>
                   <tr className="border-b border-ink-100 text-[11px] text-ink-400">
                     <th className="px-3 py-2 font-medium">Time</th>
@@ -382,6 +387,7 @@ export function WalletTrackerPage() {
                   )}
                 </tbody>
               </table>
+            </div>
           </div>
         </div>
 

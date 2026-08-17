@@ -2,7 +2,6 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
-  readonly VITE_MAGIC_PUBLISHABLE_KEY?: string;
   readonly VITE_ARCSCAN_BASE_URL?: string;
   readonly VITE_ARCSCAN_STATS_URL?: string;
   readonly VITE_ARC_RPC_URL?: string;

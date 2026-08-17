@@ -1,5 +1,8 @@
-export const API_BASE = (
-  import.meta.env.VITE_API_URL || "https://arclytics-api.dartajamul108.workers.dev"
+const PROD_API = "https://arclytics-api.dartajamul108.workers.dev";
+
+const API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? "/api" : PROD_API)
 ).replace(/\/$/, "");
 
 async function get<T>(path: string): Promise<T> {

@@ -13,6 +13,7 @@ export const toolsNav = [
   { href: paths.explorer, label: "Explorer", icon: "Explorer" as const },
   { href: paths.walletTracker, label: "Wallet Tracker", icon: "Wallet" as const },
   { href: paths.compare, label: "Compare", icon: "Compare" as const },
+  { href: paths.alerts, label: "Alerts", icon: "Alerts" as const },
   { href: paths.watchlist, label: "Watchlist", icon: "Watchlist" as const },
   { href: paths.settings, label: "Settings", icon: "Settings" as const },
 ];

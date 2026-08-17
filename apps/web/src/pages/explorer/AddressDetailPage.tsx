@@ -7,7 +7,6 @@ import { TokenIcon } from "@/components/shared/TokenIcon";
 import { explorerUrl } from "@/config/network";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadAddressDetail, type AddressTx } from "@/libs/addressDetail";
-import { isWatched, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { ago, compact, shortHash, usd, usdc } from "@/utils/format";
 
@@ -21,6 +20,10 @@ type Tab = (typeof TABS)[number];
 const DONUT = ["#7c3aed", "#3b82f6", "#f97316", "#10b981", "#94a3b8"];
 const TX_PAGE = 10;
 const TOKEN_PAGE = 10;
+
+function watchKey(address: string) {
+  return `arclytics:watch-address:${address.toLowerCase()}`;
+}
 
 function walletHue(addr: string) {
   const n = parseInt(addr.slice(2, 8), 16) || 260;
@@ -176,13 +179,18 @@ export function AddressDetailPage() {
   const [txPage, setTxPage] = useState(1);
   const [tokenPage, setTokenPage] = useState(1);
   const [copied, setCopied] = useState(false);
-  const [watched, setWatched] = useState(() => isWatched("wallet", address));
+  const [watched, setWatched] = useState(
+    () =>
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem(watchKey(address)) === "1"
+        : false,
+  );
 
   useEffect(() => {
     setTab("Transactions");
     setTxPage(1);
     setTokenPage(1);
-    setWatched(isWatched("wallet", address));
+    setWatched(localStorage.getItem(watchKey(address)) === "1");
   }, [address]);
 
   const spark = useMemo(
@@ -206,8 +214,9 @@ export function AddressDetailPage() {
   const title = data.name || data.ens || display;
 
   const toggleWatch = () => {
-    toggleWatchItem("wallet", data.address);
-    setWatched(isWatched("wallet", data.address));
+    const next = !watched;
+    setWatched(next);
+    localStorage.setItem(watchKey(data.address), next ? "1" : "0");
   };
 
   const copyAddr = async () => {

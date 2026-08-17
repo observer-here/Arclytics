@@ -1,4 +1,4 @@
-import type { Env } from "../lib/env";
+import type { Env } from "./env";
 
 export type RankingRow = {
   slug: string;
@@ -82,31 +82,6 @@ const DAY_MS = 86_400_000;
 
 export function dayKey(ts = Date.now()) {
   return Math.floor(ts / DAY_MS);
-}
-
-export async function ensureAnalyticsSchema(env: Env) {
-  await env.DB.batch([
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS protocol_latest (
-      slug TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS protocol_detail (
-      slug TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS protocol_snaps (
-      slug TEXT NOT NULL, day INTEGER NOT NULL, tvl REAL NOT NULL DEFAULT 0,
-      volume REAL NOT NULL DEFAULT 0, fees REAL NOT NULL DEFAULT 0,
-      users INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slug, day))`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS eco_latest (
-      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS tokens_latest (
-      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS wallets_latest (
-      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS token_snaps (
-      address TEXT NOT NULL, day INTEGER NOT NULL, price REAL NOT NULL DEFAULT 0,
-      mcap REAL NOT NULL DEFAULT 0, holders INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (address, day))`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS meta (
-      key TEXT PRIMARY KEY, value TEXT NOT NULL)`),
-  ]);
 }
 
 export async function saveRanking(env: Env, row: RankingRow) {

@@ -14,7 +14,6 @@ import { TokenIcon } from "@/components/shared/TokenIcon";
 import { AMM_LABEL, TOKEN_CATEGORY_PILL } from "@/config/tokens";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadTokenDetail } from "@/libs/tokenDetail";
-import { isWatched, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { ago, compact, pct, shortHash, usd } from "@/utils/format";
 
@@ -30,6 +29,10 @@ const TABS = [
 ] as const;
 
 type Tab = (typeof TABS)[number];
+
+function watchKey(address: string) {
+  return `arclytics:watch-token:${address.toLowerCase()}`;
+}
 
 function PanelCard({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`card ${className}`}>{children}</div>;
@@ -71,11 +74,13 @@ export function TokenDetailPage() {
   );
   const [tab, setTab] = useState<Tab>("Overview");
   const [copied, setCopied] = useState(false);
-  const [watched, setWatched] = useState(() => isWatched("token", address));
+  const [watched, setWatched] = useState(
+    () => (typeof localStorage !== "undefined" ? localStorage.getItem(watchKey(address)) === "1" : false),
+  );
 
   useEffect(() => {
     setTab("Overview");
-    setWatched(isWatched("token", address));
+    setWatched(localStorage.getItem(watchKey(address)) === "1");
   }, [address]);
 
   if (loading) return <div className="text-sm text-ink-400">Loading…</div>;
@@ -95,8 +100,9 @@ export function TokenDetailPage() {
   const chain = getChain();
 
   const toggleWatch = () => {
-    toggleWatchItem("token", address);
-    setWatched(isWatched("token", address));
+    const next = !watched;
+    setWatched(next);
+    localStorage.setItem(watchKey(address), next ? "1" : "0");
   };
 
   const copyAddr = async () => {

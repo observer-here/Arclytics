@@ -125,6 +125,12 @@ export const Icons = {
       <path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
     </Svg>
   ),
+  Alerts: (p: IconProps) => (
+    <Svg {...p}>
+      <path d="M6 9a6 6 0 0112 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.7 1.7 0 003.4 0" />
+    </Svg>
+  ),
   Watchlist: (p: IconProps) => (
     <Svg {...p}>
       <path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z" />
@@ -168,24 +174,6 @@ export const Icons = {
       <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
     </Svg>
   ),
-  Monitor: (p: IconProps) => (
-    <Svg {...p}>
-      <rect x="3" y="4" width="18" height="12" rx="2" />
-      <path d="M8 20h8M12 16v4" />
-    </Svg>
-  ),
-  Edit: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M12 20h9" />
-      <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
-    </Svg>
-  ),
-  Info: (p: IconProps) => (
-    <Svg {...p}>
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 11v6M12 8h.01" />
-    </Svg>
-  ),
   Chevron: (p: IconProps) => (
     <Svg {...p}>
       <path d="M6 9l6 6 6-6" />
@@ -225,11 +213,6 @@ export const Icons = {
   Menu: (p: IconProps) => (
     <Svg {...p}>
       <path d="M4 6h16M4 12h16M4 18h16" />
-    </Svg>
-  ),
-  List: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
     </Svg>
   ),
   Discord: (p: IconProps) => (
@@ -448,32 +431,6 @@ export const Icons = {
     >
       <path d="M12 2l2.4 1.2 2.6-.2.9 2.4 2.2 1.4-1.2 2.4.5 2.6-2.4.9-1.4 2.2-2.4-1.2-2.6.2-.9-2.4-2.2-1.4 1.2-2.4-.5-2.6L9.4 6.2 12 2zm-1.2 12.4l5.2-5.2-1.4-1.4-3.8 3.8-1.8-1.8-1.4 1.4 3.2 3.2z" />
     </svg>
-  ),
-  Copy: (p: IconProps) => (
-    <Svg {...p}>
-      <rect x="9" y="9" width="11" height="11" rx="2" />
-      <path d="M5 15V5a2 2 0 012-2h10" />
-    </Svg>
-  ),
-  Mail: (p: IconProps) => (
-    <Svg {...p}>
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 7l9 6 9-6" />
-    </Svg>
-  ),
-  Palette: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M12 3a9 9 0 00-9 9 7 7 0 007 7h1.5a2.5 2.5 0 002.5-2.5 2 2 0 012-2h.5a4 4 0 004-4A9 9 0 0012 3z" />
-      <circle cx="7.5" cy="10.5" r="1" fill="currentColor" />
-      <circle cx="10.5" cy="7.5" r="1" fill="currentColor" />
-      <circle cx="14.5" cy="7.5" r="1" fill="currentColor" />
-      <circle cx="16.5" cy="11" r="1" fill="currentColor" />
-    </Svg>
-  ),
-  Shield: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
-    </Svg>
   ),
   Logo: (p: IconProps) => (
     <svg

@@ -13,7 +13,6 @@
     "@arclytics/math": "workspace:*",
     "@arclytics/protocols": "workspace:*",
     "@arclytics/types": "workspace:*",
-    "magic-sdk": "^33.10.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.6.0"

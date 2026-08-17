@@ -15,7 +15,7 @@ console.log("Deploying worker…");
 run("pnpm", ["exec", "wrangler", "deploy"], backend);
 
 console.log("Ensuring remote D1 schema…");
-run("pnpm", ["exec", "wrangler", "d1", "execute", "arclytics", "--remote", "--file=./src/analytics/schema.sql"], backend);
+run("pnpm", ["exec", "wrangler", "d1", "execute", "arclytics", "--remote", "--file=./schema.sql"], backend);
 
 console.log("Health check…");
 const health = await fetch(`${api}/v1/health`).then((r) => r.json()).catch(() => null);

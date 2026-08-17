@@ -1,27 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Icons } from "@/components/shared/Icons";
-import { useAuth } from "@/hooks/useAuth";
-import { loginWithMagic } from "@/libs/auth";
 import { paths } from "@/routes/paths";
 
 export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
-  const [busy, setBusy] = useState(false);
-  const user = useAuth();
-
-  async function login() {
-    if (busy) return;
-    setBusy(true);
-    try {
-      await loginWithMagic();
-    } catch {
-      /* cancelled */
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-ink-200 bg-white/95 px-3 backdrop-blur sm:px-4">
@@ -82,23 +66,13 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
         >
           <Icons.Sun size={14} />
         </button>
-        {user ? (
-          <Link
-            to={paths.settings}
-            className="inline-flex items-center rounded-lg bg-gradient-to-r from-arc-600 to-indigo-600 px-2.5 py-1.5 text-[12px] font-medium text-white"
-          >
-            {user.username ? `@${user.username}` : "Account"}
-          </Link>
-        ) : (
-          <button
-            type="button"
-            onClick={login}
-            disabled={busy}
-            className="inline-flex items-center rounded-lg bg-gradient-to-r from-arc-600 to-indigo-600 px-2.5 py-1.5 text-[12px] font-medium text-white disabled:opacity-60"
-          >
-            {busy ? "…" : "Login"}
-          </button>
-        )}
+        <button
+          type="button"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-arc-600 to-indigo-600 px-2.5 py-1.5 text-[12px] font-medium text-white"
+        >
+          <Icons.Wallet size={13} />
+          Connect Wallet
+        </button>
       </div>
     </header>
   );

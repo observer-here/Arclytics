@@ -1,5 +1,5 @@
 import { CURATED_TOKENS, RESERVE_USD, tokenLogo, type CuratedToken } from "@arclytics/chain";
-import type { Arcscan } from "../arcscan";
+import type { Arcscan } from "./arcscan";
 import {
   dayKey,
   getMeta,
@@ -9,8 +9,8 @@ import {
   seedTokenSnapPrice,
   setMeta,
   tokenChangePct,
-} from "../db";
-import type { Env } from "../../lib/env";
+} from "./db";
+import type { Env } from "./env";
 
 export type TokenRow = {
   address: string;

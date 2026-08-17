@@ -1,7 +1,7 @@
 import { CURATED_TOKENS, RESERVE_USD } from "@arclytics/chain";
-import type { Arcscan, PageParams } from "../arcscan";
-import { getMeta, getTokens, getWallets, saveWallets, setMeta } from "../db";
-import type { Env } from "../../lib/env";
+import type { Arcscan, PageParams } from "./arcscan";
+import { getMeta, getTokens, getWallets, saveWallets, setMeta } from "./db";
+import type { Env } from "./env";
 
 type TokenFeed = {
   address: string;

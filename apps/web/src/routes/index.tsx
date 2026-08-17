@@ -16,6 +16,7 @@ import {
   WalletTrackerPage,
   ComparePage,
   AskPage,
+  AlertsPage,
   WatchlistPage,
   SettingsPage,
 } from "@/pages/tools";
@@ -48,9 +49,9 @@ export function AppRoutes() {
       <Route path={paths.walletTracker} element={<WalletTrackerPage />} />
       <Route path={paths.compare} element={<ComparePage />} />
       <Route path={paths.ask} element={<AskPage />} />
+      <Route path={paths.alerts} element={<AlertsPage />} />
       <Route path={paths.watchlist} element={<WatchlistPage />} />
       <Route path={paths.settings} element={<SettingsPage />} />
-      <Route path="/login" element={<Navigate to={paths.home} replace />} />
       <Route path={paths.search} element={<SearchPage />} />
       <Route path={paths.about} element={<AboutPage />} />
       <Route path={paths.apiDocs} element={<ApiDocsPage />} />
@@ -63,8 +64,7 @@ export function AppRoutes() {
       <Route path="/addresses" element={<Navigate to={paths.addresses} replace />} />
       <Route path="/wallet-tracker" element={<Navigate to={paths.walletTracker} replace />} />
       <Route path="/compare" element={<Navigate to={paths.compare} replace />} />
-      <Route path="/alerts" element={<Navigate to={paths.home} replace />} />
-      <Route path="/tools/alerts" element={<Navigate to={paths.home} replace />} />
+      <Route path="/alerts" element={<Navigate to={paths.alerts} replace />} />
       <Route path="/watchlist" element={<Navigate to={paths.watchlist} replace />} />
       <Route path="/api-docs" element={<Navigate to={paths.apiDocs} replace />} />
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { AreaChartCard, DonutChart } from "@/components/charts/Charts";
 import { MetricCard } from "@/components/ecosystem/MetricCard";
@@ -11,12 +11,24 @@ import {
 } from "@/config/nfts";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadNftDashboard, type NftCollection } from "@/libs/nfts";
-import { isWatched, subscribeWatch, toggleWatch as toggleStar } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { compact, shortHash } from "@/utils/format";
 
 const CACHE_KEY = "nfts-dashboard-v1";
+const WATCH_KEY = "arclytics:nft-watchlist";
 const DONUT_COLORS = ["#8b5cf6", "#3b82f6", "#f97316", "#10b981", "#06b6d4", "#94a3b8"];
+
+function readWatch() {
+  try {
+    return JSON.parse(localStorage.getItem(WATCH_KEY) ?? "[]") as string[];
+  } catch {
+    return [];
+  }
+}
+
+function writeWatch(list: string[]) {
+  localStorage.setItem(WATCH_KEY, JSON.stringify(list));
+}
 
 function exportCsv(rows: NftCollection[]) {
   const header = "address,name,symbol,category,holders,transfers\n";
@@ -42,9 +54,7 @@ export function NftsPage() {
   const [sortBy, setSortBy] = useState<"holders" | "transfers" | "name">("holders");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
-  const [rev, setRev] = useState(0);
-
-  useEffect(() => subscribeWatch(() => setRev((n) => n + 1)), []);
+  const [watchlist, setWatchlist] = useState<string[]>(() => readWatch());
 
   const { data, loading, error } = useAsyncData(CACHE_KEY, loadNftDashboard);
   const collections = data?.collections ?? [];
@@ -52,7 +62,11 @@ export function NftsPage() {
   const activity = data?.activity ?? [];
 
   const toggleWatch = (addr: string) => {
-    toggleStar("contract", addr);
+    setWatchlist((prev) => {
+      const next = prev.includes(addr) ? prev.filter((a) => a !== addr) : [...prev, addr];
+      writeWatch(next);
+      return next;
+    });
   };
 
   const filtered = useMemo(() => {
@@ -247,7 +261,7 @@ export function NftsPage() {
             <tbody>
               {pageRows.map((c, i) => {
                 const rank = (page - 1) * pageSize + i + 1;
-                const starred = rev >= 0 && isWatched("contract", c.address);
+                const starred = watchlist.includes(c.address);
                 return (
                   <tr key={c.address} className="border-b border-ink-50 hover:bg-ink-50/60">
                     <td className="px-3 py-2">

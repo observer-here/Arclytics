@@ -7,11 +7,9 @@
     "dev": "wrangler dev",
     "dev:remote": "wrangler dev --remote",
     "deploy": "wrangler deploy",
-    "deploy:remote": "wrangler deploy && wrangler d1 execute arclytics --remote --file=./src/analytics/schema.sql",
-    "db:init": "wrangler d1 execute arclytics --local --file=./src/analytics/schema.sql",
-    "db:init:remote": "wrangler d1 execute arclytics --remote --file=./src/analytics/schema.sql",
-    "db:users": "wrangler d1 execute arclytics-users --local --file=./src/user/schema.sql",
-    "db:users:remote": "wrangler d1 execute arclytics-users --remote --file=./src/user/schema.sql",
+    "deploy:remote": "wrangler deploy && wrangler d1 execute arclytics --remote --file=./schema.sql",
+    "db:init": "wrangler d1 execute arclytics --local --file=./schema.sql",
+    "db:init:remote": "wrangler d1 execute arclytics --remote --file=./schema.sql",
     "ingest": "node ../scripts/ingest-api.mjs",
     "ingest:full": "node ../scripts/ingest-api.mjs full",
     "ingest:batch": "node ../scripts/ingest-api.mjs batch",
@@ -22,9 +20,7 @@
     "@arclytics/chain": "workspace:*",
     "@arclytics/math": "workspace:*",
     "@arclytics/protocols": "workspace:*",
-    "@arclytics/types": "workspace:*",
-    "@noble/curves": "^2.3.0",
-    "@noble/hashes": "^2.3.0"
+    "@arclytics/types": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250317.0",
