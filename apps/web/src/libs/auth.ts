@@ -12,14 +12,12 @@ export type AuthUser = {
 const TOKEN_KEY = "arclytics.session";
 const USER_KEY = "arclytics.user";
 
-const MAGIC_KEY =
-  import.meta.env.VITE_MAGIC_PUBLISHABLE_KEY || "pk_live_DD2DA0A15C2214BC";
-
 let magic: Magic | null | undefined;
 
 function getMagic() {
   if (magic !== undefined) return magic;
-  magic = MAGIC_KEY ? new Magic(MAGIC_KEY) : null;
+  const key = import.meta.env.VITE_MAGIC_PUBLISHABLE_KEY;
+  magic = key ? new Magic(key) : null;
   return magic;
 }
 

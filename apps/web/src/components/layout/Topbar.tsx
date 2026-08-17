@@ -16,8 +16,8 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
     setBusy(true);
     try {
       await loginWithMagic();
-    } catch (e) {
-      console.error(e);
+    } catch {
+      /* cancelled */
     } finally {
       setBusy(false);
     }

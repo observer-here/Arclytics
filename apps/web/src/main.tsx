@@ -7,9 +7,7 @@ function dismissBoot() {
   const boot = document.getElementById("boot");
   if (!boot) return;
   boot.classList.add("boot-out");
-  const drop = () => boot.remove();
-  boot.addEventListener("transitionend", drop, { once: true });
-  setTimeout(drop, 400);
+  boot.addEventListener("transitionend", () => boot.remove(), { once: true });
 }
 
 createRoot(document.getElementById("root")!).render(

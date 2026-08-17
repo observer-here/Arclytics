@@ -107,8 +107,8 @@ function AccountCard() {
               setBusy(true);
               try {
                 await loginWithMagic();
-              } catch (e) {
-                console.error(e);
+              } catch {
+                /* cancelled */
               } finally {
                 setBusy(false);
               }
