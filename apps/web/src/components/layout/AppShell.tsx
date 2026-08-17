@@ -16,7 +16,7 @@ export function AppShell({
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen bg-ink-50">
+    <div className="flex min-h-screen bg-ink-50 dark:bg-ink-900">
       {open && (
         <button
           type="button"

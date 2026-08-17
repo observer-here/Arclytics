@@ -19,7 +19,6 @@ const iconMap = {
   Wallet: Icons.Wallet,
   Compare: Icons.Compare,
   Ask: Icons.Ask,
-  Alerts: Icons.Alerts,
   Watchlist: Icons.Watchlist,
   Settings: Icons.Settings,
 } as const;

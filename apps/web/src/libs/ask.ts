@@ -1,7 +1,4 @@
-const API_BASE = (
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.DEV ? "/api" : "https://arclytics-api.dartajamul108.workers.dev")
-).replace(/\/$/, "");
+import { API_BASE } from "./api";
 
 export const AI_KEY = "arclytics:ai-key";
 export const AI_PROVIDER = "arclytics:ai-provider";

@@ -19,7 +19,6 @@ export const paths = {
   walletTracker: "/tools/wallet",
   compare: "/tools/compare",
   ask: "/tools/ask",
-  alerts: "/tools/alerts",
   watchlist: "/tools/watchlist",
   settings: "/settings",
   search: "/search",

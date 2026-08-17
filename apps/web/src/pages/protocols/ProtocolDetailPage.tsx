@@ -7,6 +7,7 @@ import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categorie
 import { CATEGORY_PILL } from "@/config/ecosystem";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadProtocolDetail } from "@/libs/protocolDetail";
+import { isWatched, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { ago, compact, shortHash, usd } from "@/utils/format";
 
@@ -94,10 +95,6 @@ function Kpi({
   );
 }
 
-function watchKey(slug: string) {
-  return `arclytics:watch:${slug}`;
-}
-
 export function ProtocolDetailPage() {
   const { slug = "" } = useParams();
   const { data, loading, error } = useAsyncData(
@@ -106,13 +103,11 @@ export function ProtocolDetailPage() {
     [slug],
   );
   const [tab, setTab] = useState<Tab>("Overview");
-  const [watched, setWatched] = useState(
-    () => (typeof localStorage !== "undefined" ? localStorage.getItem(watchKey(slug)) === "1" : false),
-  );
+  const [watched, setWatched] = useState(() => isWatched("protocol", slug));
 
   useEffect(() => {
     setTab("Overview");
-    setWatched(localStorage.getItem(watchKey(slug)) === "1");
+    setWatched(isWatched("protocol", slug));
   }, [slug]);
 
   const category = useMemo(() => {
@@ -128,9 +123,8 @@ export function ProtocolDetailPage() {
   const pill = CATEGORY_PILL[protocol.category] ?? CATEGORY_PILL.other;
 
   const toggleWatch = () => {
-    const next = !watched;
-    setWatched(next);
-    localStorage.setItem(watchKey(slug), next ? "1" : "0");
+    toggleWatchItem("protocol", slug);
+    setWatched(isWatched("protocol", slug));
   };
 
   const share = async () => {
