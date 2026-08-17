@@ -1,4 +1,4 @@
-import type { Env } from "./env";
+import type { Env } from "../lib/env";
 
 export type PageParams = Record<string, string | number> | null;
 

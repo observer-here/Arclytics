@@ -1,42 +1,18 @@
-import { getDetail, getEco, getMeta, getTokens, getWallets } from "./db";
+import { ensureAnalyticsSchema, getDetail, getEco, getMeta, getTokens, getWallets } from "./analytics/db";
 import {
   activeRankings,
   ingestAll,
   ingestOne,
   ingestRoundRobin,
   ingestTvlFast,
-} from "./compute";
-import type { Env } from "./env";
-import { corsPreflight, json } from "./http";
-import { createArcscan } from "./arcscan";
-import { ingestTokens, maybeIngestTokens } from "./tokens";
-import { ingestWallets, maybeIngestWallets } from "./wallets";
+} from "./analytics/ingest/compute";
+import { createArcscan } from "./analytics/arcscan";
+import { ingestTokens, maybeIngestTokens } from "./analytics/ingest/tokens";
+import { ingestWallets, maybeIngestWallets } from "./analytics/ingest/wallets";
 import { handleAsk } from "./ask";
-
-async function ensureSchema(env: Env) {
-  await env.DB.batch([
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS protocol_latest (
-      slug TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS protocol_detail (
-      slug TEXT PRIMARY KEY, payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS protocol_snaps (
-      slug TEXT NOT NULL, day INTEGER NOT NULL, tvl REAL NOT NULL DEFAULT 0,
-      volume REAL NOT NULL DEFAULT 0, fees REAL NOT NULL DEFAULT 0,
-      users INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (slug, day))`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS eco_latest (
-      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS tokens_latest (
-      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS wallets_latest (
-      id INTEGER PRIMARY KEY CHECK (id = 1), payload TEXT NOT NULL, updated_at INTEGER NOT NULL)`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS token_snaps (
-      address TEXT NOT NULL, day INTEGER NOT NULL, price REAL NOT NULL DEFAULT 0,
-      mcap REAL NOT NULL DEFAULT 0, holders INTEGER NOT NULL DEFAULT 0,
-      PRIMARY KEY (address, day))`),
-    env.DB.prepare(`CREATE TABLE IF NOT EXISTS meta (
-      key TEXT PRIMARY KEY, value TEXT NOT NULL)`),
-  ]);
-}
+import type { Env } from "./lib/env";
+import { corsPreflight, json } from "./lib/http";
+import { handleAuth } from "./user/auth";
 
 function authorized(req: Request, env: Env) {
   if (!env.INGEST_SECRET) return true;
@@ -59,7 +35,7 @@ export default {
 
       if (path === "/v1/ingest" && req.method === "POST") {
         if (!authorized(req, env)) return json({ error: "unauthorized" }, 401);
-        await ensureSchema(env);
+        await ensureAnalyticsSchema(env);
         const arc = createArcscan(env);
         const mode = new URL(req.url).searchParams.get("mode");
         if (mode === "tokens") {
@@ -84,7 +60,7 @@ export default {
 
       if (path.startsWith("/v1/ingest/") && req.method === "POST") {
         if (!authorized(req, env)) return json({ error: "unauthorized" }, 401);
-        await ensureSchema(env);
+        await ensureAnalyticsSchema(env);
         const slug = path.slice("/v1/ingest/".length);
         const result = await ingestOne(env, createArcscan(env), slug);
         return json(result);
@@ -127,12 +103,16 @@ export default {
         return json(data);
       }
 
+      if (path.startsWith("/v1/auth")) {
+        return handleAuth(req, env);
+      }
+
       if (path === "/v1/ask" && (req.method === "GET" || req.method === "POST")) {
         return handleAsk(req, env);
       }
 
       if (path === "/v1/wallets" && req.method === "GET") {
-        await ensureSchema(env);
+        await ensureAnalyticsSchema(env);
         let data = await getWallets(env);
         if (!data?.items?.length) {
           const arc = createArcscan(env);
@@ -159,7 +139,7 @@ export default {
   async scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(
       (async () => {
-        await ensureSchema(env);
+        await ensureAnalyticsSchema(env);
         const arc = createArcscan(env);
         await ingestRoundRobin(env, arc, 3);
         await maybeIngestTokens(env, arc, 10 * 60_000);

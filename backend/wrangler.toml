@@ -3,12 +3,8 @@ main = "src/index.ts"
 compatibility_date = "2025-03-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Install workspace deps from repo root before bundle (Cloudflare CI / wrangler deploy)
-[build]
-command = "pnpm install --frozen-lockfile"
-cwd = ".."
-
 [dev]
+ip = "127.0.0.1"
 port = 8787
 
 [[d1_databases]]
@@ -17,7 +13,11 @@ database_name = "arclytics"
 # Production Cloudflare D1 (used by `wrangler deploy` and cron)
 database_id = "4fc65632-6c25-41e5-8aca-7f888524c862"
 # Local `wrangler dev` uses a separate SQLite DB under backend/.wrangler/state/
-# (not this id). Old local placeholder was 00000000-0000-0000-0000-000000000001.
+
+[[d1_databases]]
+binding = "USER_DB"
+database_name = "arclytics-users"
+database_id = "9d64b1c5-143b-4f77-b7ed-9ed70c100dfd"
 
 [triggers]
 crons = ["*/10 * * * *"]
@@ -26,7 +26,7 @@ crons = ["*/10 * * * *"]
 ARCSCAN_BASE = "https://testnet.arcscan.app/api/v2"
 ARCSCAN_STATS = "https://testnet.arcscan.app/stats-service/api/v1"
 AI_BASE_URL = "https://api.groq.com/openai/v1"
-AI_MODEL = "llama-3.1-8b-instant"
+AI_MODEL = "llama-3.3-70b-versatile"
 ARC_RPC = "https://rpc.testnet.arc.network"
 
 [observability]

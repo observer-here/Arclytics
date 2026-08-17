@@ -2,7 +2,7 @@ import { addresses } from "@arclytics/chain";
 import { priceUsd, sumTvlUsd, toNumber } from "@arclytics/math";
 import { protocols } from "@arclytics/protocols";
 import type { ProtocolConfig } from "@arclytics/types";
-import type { Arcscan, PageParams } from "./arcscan";
+import type { Arcscan, PageParams } from "../arcscan";
 import {
   changePct,
   dayKey,
@@ -19,8 +19,8 @@ import {
   type DetailPayload,
   type PaymentRouterStats,
   type RankingRow,
-} from "./db";
-import type { Env } from "./env";
+} from "../db";
+import type { Env } from "../../lib/env";
 
 const DAY_MS = 86_400_000;
 const HIST_DAYS = 90;
