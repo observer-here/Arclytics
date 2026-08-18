@@ -13,18 +13,6 @@
     @apply min-h-screen bg-ink-50 text-ink-900 antialiased dark:bg-ink-900 dark:text-ink-50;
   }
 
-  #boot {
-    @apply fixed inset-0 z-[9999] flex items-center justify-center bg-ink-50 transition-opacity duration-200 dark:bg-ink-900;
-  }
-
-  #boot img {
-    @apply h-12 w-12 rounded-lg object-contain;
-  }
-
-  #boot.boot-out {
-    @apply pointer-events-none opacity-0;
-  }
-
   a {
     @apply text-inherit no-underline;
   }
