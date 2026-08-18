@@ -119,7 +119,7 @@ export function EcosystemPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="metric-grid xl:grid-cols-6">
         <MetricCard
           label="Total Value Locked"
           value={usd(stats?.tvlUsd ?? 0)}

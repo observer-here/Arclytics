@@ -215,7 +215,7 @@ export function TokenDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="metric-grid xl:grid-cols-6">
         {kpis.map((k) => (
           <MetricCard
             key={k.label}

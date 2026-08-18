@@ -1,5 +1,5 @@
+import { MetricCard } from "@/components/ecosystem/MetricCard";
 import { Icons } from "@/components/shared/Icons";
-import { StatCard } from "@/components/dashboard/StatCard";
 import { AreaChartCard, BarChartCard } from "@/components/charts/Charts";
 import { TopProtocols } from "@/components/protocols/TopProtocols";
 import { TopTokens } from "@/components/tokens/TopTokens";
@@ -36,13 +36,13 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Total Value Locked" value={usd(data.stats.tvlUsd)} change={data.stats.tvlChange} icon={<Icons.Tvl size={13} />} color="#2563eb" />
-        <StatCard label="Total Transactions" value={compact(data.stats.totalTransactions)} change={data.stats.txChange} icon={<Icons.Tx size={13} />} series={txSpark} color="#8b5cf6" />
-        <StatCard label="Total Addresses" value={compact(data.stats.totalAddresses)} change={data.stats.addressChange} icon={<Icons.Users size={13} />} series={addrSpark} color="#06b6d4" />
-        <StatCard label="Total Blocks" value={compact(data.stats.totalBlocks)} change={data.stats.blockChange} icon={<Icons.Blocks size={13} />} color="#6366f1" />
-        <StatCard label="Gas Used (24h)" value={compact(data.stats.gasUsedToday)} change={data.stats.gasChange} icon={<Icons.Gas size={13} />} color="#f59e0b" />
-        <StatCard label="Total Contracts" value={compact(data.stats.totalContracts)} change={data.stats.contractChange} icon={<Icons.Contracts size={13} />} color="#10b981" />
+      <div className="metric-grid xl:grid-cols-6">
+        <MetricCard label="Total Value Locked" value={usd(data.stats.tvlUsd)} change={data.stats.tvlChange} icon={<Icons.Tvl size={13} />} color="#2563eb" />
+        <MetricCard label="Total Transactions" value={compact(data.stats.totalTransactions)} change={data.stats.txChange} icon={<Icons.Tx size={13} />} series={txSpark} color="#8b5cf6" />
+        <MetricCard label="Total Addresses" value={compact(data.stats.totalAddresses)} change={data.stats.addressChange} icon={<Icons.Users size={13} />} series={addrSpark} color="#06b6d4" />
+        <MetricCard label="Total Blocks" value={compact(data.stats.totalBlocks)} change={data.stats.blockChange} icon={<Icons.Blocks size={13} />} color="#6366f1" />
+        <MetricCard label="Gas Used (24h)" value={compact(data.stats.gasUsedToday)} change={data.stats.gasChange} icon={<Icons.Gas size={13} />} color="#f59e0b" />
+        <MetricCard label="Total Contracts" value={compact(data.stats.totalContracts)} change={data.stats.contractChange} icon={<Icons.Contracts size={13} />} color="#10b981" />
       </div>
 
       <div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">

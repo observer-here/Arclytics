@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { DonutChart } from "@/components/charts/Charts";
-import { StatCard } from "@/components/dashboard/StatCard";
+import { MetricCard } from "@/components/ecosystem/MetricCard";
 import { Icons } from "@/components/shared/Icons";
 import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { TokenIcon } from "@/components/shared/TokenIcon";
@@ -145,6 +145,7 @@ function ActivityLines({
     i: number;
     x: number;
     y: number;
+    right: boolean;
   } | null>(null);
 
   const total = data;
@@ -158,7 +159,7 @@ function ActivityLines({
   const w = 560;
   const h = 132;
   const padL = 48;
-  const padR = 8;
+  const padR = 32;
   const padT = 8;
   const padB = 18;
   const innerW = w - padL - padR;
@@ -187,10 +188,13 @@ function ActivityLines({
     const el = box.current;
     if (!el || !total[i]) return;
     const r = el.getBoundingClientRect();
+    const x = clientX - r.left;
+    const right = x > r.width - 80;
     setTip({
       i,
-      x: Math.min(r.width - 8, Math.max(8, clientX - r.left)),
+      x: right ? r.width - 10 : Math.max(10, x),
       y: Math.max(10, clientY - r.top - 6),
+      right,
     });
   };
 
@@ -200,7 +204,9 @@ function ActivityLines({
     <div ref={box} className="relative" onMouseLeave={() => setTip(null)}>
       {tip && tipPt && (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md border border-ink-200 bg-white px-2 py-1 text-[10px] shadow-sm"
+          className={`pointer-events-none absolute z-10 -translate-y-full rounded-md border border-ink-200 bg-white px-2 py-1 text-[10px] shadow-sm ${
+            tip.right ? "-translate-x-full" : "-translate-x-1/2"
+          }`}
           style={{ left: tip.x, top: tip.y }}
         >
           <div className="font-medium text-ink-700">{tipPt.date}</div>
@@ -224,7 +230,7 @@ function ActivityLines({
           </div>
         </div>
       )}
-      <svg viewBox={`0 0 ${w} ${h}`} className="h-[132px] w-full overflow-visible" preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${w} ${h}`} className="h-[132px] w-full" preserveAspectRatio="none">
         {ticks.map((t) => {
           const y = padT + innerH - t * innerH;
           return (
@@ -283,7 +289,14 @@ function ActivityLines({
         {xLabels.map(({ i, label }) => {
           const x = padL + (i / n) * innerW;
           return (
-            <text key={`x-${i}`} x={x} y={h - 6} textAnchor="middle" className="fill-ink-400" fontSize="9">
+            <text
+              key={`x-${i}`}
+              x={x}
+              y={h - 6}
+              textAnchor={i === xLabels.at(-1)?.i ? "end" : i === xLabels[0]?.i ? "start" : "middle"}
+              className="fill-ink-400"
+              fontSize="9"
+            >
               {label}
             </text>
           );
@@ -375,14 +388,14 @@ export function AnalyticsPage() {
 
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
-        <StatCard label="Transactions" value={compact(m.txns24h)} change={m.txChange} icon={<Icons.Tx size={13} />} series={txSpark} color="#8b5cf6" />
-        <StatCard label="Active Addresses" value={compact(m.activeAddresses)} change={m.addressChange} icon={<Icons.Users size={13} />} series={addrSpark} color="#3b82f6" />
-        <StatCard label="New Addresses" value={compact(m.newAddresses24h)} change={m.newAddrChange} icon={<Icons.Activity size={13} />} series={addrSpark} color="#06b6d4" />
-        <StatCard label="TVL" value={usd(m.tvlUsd)} change={m.tvlChange} icon={<Icons.Tvl size={13} />} color="#2563eb" />
-        <StatCard label="Total Volume" value={compact(m.volumeProxy)} change={m.volumeChange} icon={<Icons.Volume size={13} />} series={volSpark} color="#0ea5e9" />
-        <StatCard label="Fees (USDC)" value={usd(m.fees24h)} change={m.feeChange} icon={<Icons.Fees size={13} />} color="#f59e0b" />
-        <StatCard label="TPS (Live)" value={m.tps.toFixed(1)} change={m.tpsChange} icon={<Icons.Analytics size={13} />} series={txSpark} color="#10b981" />
+      <div className="metric-grid xl:grid-cols-7">
+        <MetricCard label="Transactions" value={compact(m.txns24h)} change={m.txChange} icon={<Icons.Tx size={13} />} series={txSpark} color="#8b5cf6" />
+        <MetricCard label="Active Addresses" value={compact(m.activeAddresses)} change={m.addressChange} icon={<Icons.Users size={13} />} series={addrSpark} color="#3b82f6" />
+        <MetricCard label="New Addresses" value={compact(m.newAddresses24h)} change={m.newAddrChange} icon={<Icons.Activity size={13} />} series={addrSpark} color="#06b6d4" />
+        <MetricCard label="TVL" value={usd(m.tvlUsd)} change={m.tvlChange} icon={<Icons.Tvl size={13} />} color="#2563eb" />
+        <MetricCard label="Total Volume" value={compact(m.volumeProxy)} change={m.volumeChange} icon={<Icons.Volume size={13} />} series={volSpark} color="#0ea5e9" />
+        <MetricCard label="Fees (USDC)" value={usd(m.fees24h)} change={m.feeChange} icon={<Icons.Fees size={13} />} color="#f59e0b" />
+        <MetricCard label="TPS (Live)" value={m.tps.toFixed(1)} change={m.tpsChange} icon={<Icons.Analytics size={13} />} series={txSpark} color="#10b981" />
       </div>
 
       {/* Row 2: Activity 50% | Heatmap 25% | Network Overview 25% */}

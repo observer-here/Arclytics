@@ -122,7 +122,7 @@ export function TokensPage() {
         })}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7">
+      <div className="metric-grid xl:grid-cols-7">
         <Link to={paths.tokensMarketCap} className="block transition hover:opacity-90">
           <MetricCard
             label="Tracked Market Cap"

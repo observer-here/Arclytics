@@ -123,7 +123,7 @@ export function WalletTrackerPage() {
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="min-w-0 space-y-2.5">
       <div className="flex gap-2">
         <input
           type="search"
@@ -142,12 +142,12 @@ export function WalletTrackerPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+      <div className="metric-grid xl:grid-cols-5">
         <MetricCard
           label="Wallets Tracked"
           value={compact(stats?.tracked ?? 0)}
           change={6.72}
-          icon={<Icons.Wallet size={13} />}
+          icon={<Icons.Wallet size={11} />}
           color="#8b5cf6"
           series={stats?.txSpark}
         />
@@ -155,7 +155,7 @@ export function WalletTrackerPage() {
           label="Total Value Tracked"
           value={usd(stats?.totalValue ?? 0)}
           change={valueChange}
-          icon={<Icons.Activity size={13} />}
+          icon={<Icons.Activity size={11} />}
           color="#3b82f6"
           series={stats?.valueSpark}
         />
@@ -163,28 +163,28 @@ export function WalletTrackerPage() {
           label="Top 10 Wallets Value"
           value={usd(stats?.top10Value ?? 0)}
           change={11.35}
-          icon={<Icons.Rankings size={13} />}
+          icon={<Icons.Rankings size={11} />}
           color="#06b6d4"
         />
         <MetricCard
           label="Active Wallets (24h)"
           value={compact(stats?.active24h ?? 0)}
           change={14.23}
-          icon={<Icons.Users size={13} />}
+          icon={<Icons.Users size={11} />}
           color="#10b981"
         />
         <MetricCard
           label="Transactions (24h)"
           value={compact(stats?.txs24h ?? 0)}
           change={9.18}
-          icon={<Icons.Tx size={13} />}
+          icon={<Icons.Tx size={11} />}
           color="#6366f1"
           series={stats?.txSpark}
         />
       </div>
 
-      <div className="grid gap-2 lg:grid-cols-3">
-        <div className="space-y-2 lg:col-span-2">
+      <div className="grid min-w-0 gap-2 lg:grid-cols-3">
+        <div className="min-w-0 space-y-2 lg:col-span-2">
           <div className="card overflow-hidden">
             <div className="flex flex-wrap items-center gap-2 border-b border-ink-100 px-3 py-2">
               <input
@@ -199,7 +199,8 @@ export function WalletTrackerPage() {
               />
             </div>
 
-            <table className="w-full text-left text-[12px]">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left text-[12px]">
                 <thead>
                   <tr className="border-b border-ink-100 text-[11px] text-ink-400">
                     <th className="w-8 px-3 py-2.5 font-medium">#</th>
@@ -291,13 +292,14 @@ export function WalletTrackerPage() {
                   )}
                 </tbody>
               </table>
+            </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ink-100 px-3 py-2 text-[11px] text-ink-500">
               <span>
                 Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} of{" "}
                 {filtered.length}
               </span>
-              <div className="flex items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1">
                 <button
                   type="button"
                   disabled={page <= 1}
@@ -336,13 +338,14 @@ export function WalletTrackerPage() {
           </div>
 
           <div className="card overflow-hidden">
-            <div className="flex items-center justify-between border-b border-ink-100 px-3 py-2">
-              <div className="panel-title">Recent Wallet Activity</div>
-              <a href="/explorer/transactions" className="text-[11px] text-arc-600 hover:underline">
+            <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-3 py-2">
+              <div className="min-w-0 truncate panel-title">Recent Wallet Activity</div>
+              <a href="/explorer/transactions" className="shrink-0 text-[11px] text-arc-600 hover:underline">
                 View all
               </a>
             </div>
-            <table className="w-full text-left text-[12px]">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-[12px]">
                 <thead>
                   <tr className="border-b border-ink-100 text-[11px] text-ink-400">
                     <th className="px-3 py-2 font-medium">Time</th>
@@ -382,10 +385,11 @@ export function WalletTrackerPage() {
                   )}
                 </tbody>
               </table>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <DonutChart
             title="Portfolio Distribution"
             slices={stats?.portfolio ?? []}
@@ -396,13 +400,13 @@ export function WalletTrackerPage() {
             <div className="panel-title mb-2">Top Gainers (24h)</div>
             <div className="space-y-2">
               {(stats?.gainers ?? []).map((g, i) => (
-                <div key={g.address} className="flex items-center justify-between text-[12px]">
-                  <span className="text-ink-500">{i + 1}.</span>
-                  <span className="flex-1 truncate font-mono text-[11px] text-ink-700">
+                <div key={g.address} className="flex min-w-0 items-center justify-between gap-1.5 text-[12px]">
+                  <span className="shrink-0 text-ink-500">{i + 1}.</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-700">
                     {shortHash(g.address)}
                   </span>
-                  <span className="font-medium text-emerald-600">{pct(g.change)}</span>
-                  <span className="ml-2 text-ink-500">{usd(g.delta)}</span>
+                  <span className="shrink-0 font-medium text-emerald-600">{pct(g.change)}</span>
+                  <span className="shrink-0 text-ink-500">{usd(g.delta)}</span>
                 </div>
               ))}
               {!stats?.gainers?.length && (
@@ -415,13 +419,13 @@ export function WalletTrackerPage() {
             <div className="panel-title mb-2">Top Losers (24h)</div>
             <div className="space-y-2">
               {(stats?.losers ?? []).map((g, i) => (
-                <div key={g.address} className="flex items-center justify-between text-[12px]">
-                  <span className="text-ink-500">{i + 1}.</span>
-                  <span className="flex-1 truncate font-mono text-[11px] text-ink-700">
+                <div key={g.address} className="flex min-w-0 items-center justify-between gap-1.5 text-[12px]">
+                  <span className="shrink-0 text-ink-500">{i + 1}.</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-700">
                     {shortHash(g.address)}
                   </span>
-                  <span className="font-medium text-rose-600">{pct(g.change)}</span>
-                  <span className="ml-2 text-ink-500">{usd(g.delta)}</span>
+                  <span className="shrink-0 font-medium text-rose-600">{pct(g.change)}</span>
+                  <span className="shrink-0 text-ink-500">{usd(g.delta)}</span>
                 </div>
               ))}
               {!stats?.losers?.length && (
@@ -432,25 +436,25 @@ export function WalletTrackerPage() {
 
           <div className="card p-3">
             <div className="panel-title mb-2">Tracked Wallet Insights</div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
+            <div className="grid min-w-0 grid-cols-3 gap-2 text-center">
+              <div className="min-w-0">
                 <div className="text-[10px] text-ink-400">24h Net Flow</div>
                 <div
-                  className={`text-[13px] font-semibold ${(stats?.netFlow24h ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                  className={`truncate text-[13px] font-semibold ${(stats?.netFlow24h ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}
                 >
                   {(stats?.netFlow24h ?? 0) >= 0 ? "+" : ""}
                   {usd(stats?.netFlow24h ?? 0)}
                 </div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-[10px] text-ink-400">Avg. Wallet Age</div>
-                <div className="text-[13px] font-semibold text-ink-800">
+                <div className="truncate text-[13px] font-semibold text-ink-800">
                   {stats?.avgAgeDays ?? 0}d
                 </div>
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-[10px] text-ink-400">Active Rate</div>
-                <div className="text-[13px] font-semibold text-ink-800">
+                <div className="truncate text-[13px] font-semibold text-ink-800">
                   {(stats?.activeRate ?? 0).toFixed(1)}%
                 </div>
               </div>

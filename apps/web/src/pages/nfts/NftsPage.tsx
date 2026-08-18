@@ -110,7 +110,7 @@ export function NftsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      <div className="metric-grid xl:grid-cols-6">
         <MetricCard
           label="Collections"
           value={compact(stats?.collections ?? 0)}
