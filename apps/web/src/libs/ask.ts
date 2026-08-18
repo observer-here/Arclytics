@@ -1,35 +1,6 @@
 import { API_BASE } from "./api";
 
-export const AI_KEY = "arclytics:ai-key";
-export const AI_PROVIDER = "arclytics:ai-provider";
-
-export type AskProvider = "openai" | "groq" | "openrouter";
 export type AskMsg = { role: "user" | "assistant"; content: string };
-
-export function readAiKey() {
-  try {
-    return localStorage.getItem(AI_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-export function readAiProvider(): AskProvider {
-  try {
-    const v = localStorage.getItem(AI_PROVIDER);
-    if (v === "groq" || v === "openrouter" || v === "openai") return v;
-  } catch {
-    /* ignore */
-  }
-  return "groq";
-}
-
-export async function askConfigured() {
-  const res = await fetch(`${API_BASE}/v1/ask`, { cache: "no-store" });
-  if (!res.ok) return false;
-  const data = (await res.json()) as { configured?: boolean };
-  return Boolean(data.configured);
-}
 
 export function cleanAskError(raw: string) {
   const s = raw.replace(/^Error:\s*/, "").trim();
@@ -58,12 +29,8 @@ export async function streamAsk(
     method: "POST",
     cache: "no-store",
     signal,
-    headers: {
-      "content-type": "application/json",
-      "x-ai-key": readAiKey(),
-      "x-ai-provider": readAiProvider(),
-    },
-    body: JSON.stringify({ messages, provider: readAiProvider() }),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ messages }),
   });
 
   if (!res.ok) {

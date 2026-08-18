@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icons } from "@/components/shared/Icons";
-import {
-  AI_KEY,
-  AI_PROVIDER,
-  askConfigured,
-  readAiKey,
-  readAiProvider,
-  streamAsk,
-  type AskMsg,
-  type AskProvider,
-} from "@/libs/ask";
+import { streamAsk, type AskMsg } from "@/libs/ask";
 
 const PROMPTS = [
   {
@@ -130,16 +121,9 @@ export function AskPage() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [serverKey, setServerKey] = useState(false);
-  const [key, setKey] = useState(readAiKey);
-  const [provider, setProvider] = useState<AskProvider>(readAiProvider);
   const box = useRef<HTMLDivElement>(null);
   const row = useRef<HTMLDivElement>(null);
   const abort = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    askConfigured().then(setServerKey).catch(() => setServerKey(false));
-  }, []);
 
   useEffect(() => {
     box.current?.scrollTo({ top: box.current.scrollHeight });
@@ -148,10 +132,6 @@ export function AskPage() {
   const send = async (text: string) => {
     const q = text.trim();
     if (!q || busy) return;
-    if (!serverKey && !key.trim()) {
-      setErr("Paste an OpenAI, Groq, or OpenRouter API key first.");
-      return;
-    }
     setErr(null);
     setInput("");
     const next: AskMsg[] = [...msgs, { role: "user", content: q }];
@@ -283,34 +263,6 @@ export function AskPage() {
 
       {err && <div className="px-1 pb-1 text-[11px] text-rose-600">{err}</div>}
 
-      {!serverKey && (
-        <div className="mb-2 flex flex-wrap items-center gap-1.5 px-1">
-          <select
-            value={provider}
-            onChange={(e) => {
-              const v = e.target.value as AskProvider;
-              setProvider(v);
-              localStorage.setItem(AI_PROVIDER, v);
-            }}
-            className="rounded-lg border border-ink-200 bg-white px-1.5 py-1 text-[11px] text-ink-600"
-          >
-            <option value="openai">OpenAI</option>
-            <option value="groq">Groq</option>
-            <option value="openrouter">OpenRouter</option>
-          </select>
-          <input
-            type="password"
-            value={key}
-            onChange={(e) => {
-              setKey(e.target.value);
-              localStorage.setItem(AI_KEY, e.target.value);
-            }}
-            placeholder={`${provider} API key`}
-            className="min-w-[160px] flex-1 rounded-lg border border-ink-200 bg-white px-2 py-1 text-[11px]"
-          />
-        </div>
-      )}
-
       <form
         className="px-1 pb-1"
         onSubmit={(e) => {
@@ -320,13 +272,6 @@ export function AskPage() {
       >
         <div className="rounded-2xl border border-ink-200 bg-white p-2.5 shadow-sm">
           <div className="flex items-end gap-2">
-            <button
-              type="button"
-              className="mb-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg text-ink-400 hover:bg-ink-50 hover:text-ink-700"
-              aria-label="Attach"
-            >
-              <Icons.Paperclip size={16} />
-            </button>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}

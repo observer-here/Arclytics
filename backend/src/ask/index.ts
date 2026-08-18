@@ -10,11 +10,7 @@ const ALLOWED = [
   "https://openrouter.ai/api/v1",
 ];
 
-const PROVIDERS: Record<string, { base: string; model: string }> = {
-  openai: { base: "https://api.openai.com/v1", model: "gpt-4o-mini" },
-  groq: { base: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile" },
-  openrouter: { base: "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini" },
-};
+const GROQ = { base: "https://api.groq.com/openai/v1", model: "llama-3.3-70b-versatile" };
 
 const GROQ_FALLBACKS = ["llama-3.3-70b-versatile", "openai/gpt-oss-20b", "llama-3.1-8b-instant"];
 
@@ -23,7 +19,7 @@ type Series = { title: string; data: Array<{ date: string; value: number }> };
 
 const CORS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-headers": "content-type,authorization,x-ai-key,x-ai-provider",
+  "access-control-allow-headers": "content-type,authorization",
 };
 
 const SYSTEM = `You are Ask Arclytics — the in-app analyst for Arc Testnet (Circle L1, chain 5042002, gas is USDC).
@@ -180,7 +176,7 @@ export async function handleAsk(req: Request, env: Env): Promise<Response> {
     return Response.json({ configured: Boolean(env.AI_API_KEY) }, { headers: CORS });
   }
 
-  const body = (await req.json().catch(() => null)) as { messages?: Msg[]; provider?: string } | null;
+  const body = (await req.json().catch(() => null)) as { messages?: Msg[] } | null;
   const incoming = (body?.messages ?? [])
     .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
     .slice(-8)
@@ -201,20 +197,18 @@ export async function handleAsk(req: Request, env: Env): Promise<Response> {
   const hello = isHello(lastUser);
   const series = chart ? await loadTvlSeries(env, lastUser) : [];
 
-  const provider = (body?.provider || req.headers.get("x-ai-provider") || "groq").toLowerCase();
-  const preset = PROVIDERS[provider] ?? PROVIDERS.groq;
-  const base = (env.AI_BASE_URL || preset.base).replace(/\/$/, "");
+  const base = (env.AI_BASE_URL || GROQ.base).replace(/\/$/, "");
   if (!ALLOWED.includes(base)) {
     return Response.json({ error: "unsupported AI provider" }, { status: 400, headers: CORS });
   }
-  const key = env.AI_API_KEY || req.headers.get("x-ai-key") || "";
+  const key = env.AI_API_KEY || "";
   if (!key) {
     if (series.length) return Response.json({ reply: withGraphs(chartCaption(series), series) }, { headers: CORS });
-    return Response.json({ error: "Add an API key to chat." }, { status: 401, headers: CORS });
+    return Response.json({ error: "Ask Arclytics is not configured." }, { status: 503, headers: CORS });
   }
 
   const url = `${base}/chat/completions`;
-  const models = modelQueue(base, env.AI_MODEL || preset.model);
+  const models = modelQueue(base, env.AI_MODEL || GROQ.model);
   const messages: Msg[] = [{ role: "system", content: SYSTEM }, ...incoming];
 
   if (!hello) {

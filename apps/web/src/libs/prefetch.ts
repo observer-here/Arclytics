@@ -78,7 +78,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
 };
 
 const cacheKeyByPath: Record<string, string> = {
-  [paths.home]: "dashboard-v3",
+  [paths.home]: "dashboard-v4",
   [paths.ecosystem]: "ecosystem-v11",
   [paths.protocols]: "protocol-rankings-v11",
   [paths.rankings]: "protocol-rankings-v11",

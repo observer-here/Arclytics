@@ -14,6 +14,7 @@ export async function getDashboardData() {
     contractCountersRaw,
     rankings,
     counters,
+    recentBlocks,
   ] = await Promise.all([
     arcscan.stats().catch(() => ({}) as Record<string, unknown>),
     arcscan.txChart().catch(() => ({
@@ -24,6 +25,7 @@ export async function getDashboardData() {
     arcscan.smartContractCounters().catch(() => ({}) as Record<string, string>),
     getProtocolRankings().catch(() => []),
     arcscan.statsCounters().catch(() => ({}) as Record<string, number>),
+    arcscan.blocksPage(null).then((d) => d.items).catch(() => [] as Array<Record<string, unknown>>),
   ]);
 
   const stats = statsRaw as Record<string, unknown>;
@@ -40,10 +42,18 @@ export async function getDashboardData() {
   const newTxns24h = Number(counters.newTxns24h ?? stats.transactions_today ?? 0);
   const newAccounts24h = lastCompleteValue(addressChart) ?? 0;
   const avgBlockMs =
-    Number(stats.average_block_time ?? 0) ||
-    (counters.averageBlockTime ? counters.averageBlockTime * 1000 : 0);
+    (counters.averageBlockTime ? counters.averageBlockTime * 1000 : 0) ||
+    Number(stats.average_block_time ?? 0);
   const newBlocks24h = avgBlockMs > 0 ? Math.round(86_400_000 / avgBlockMs) : 0;
   const newContracts24h = Number(counters.lastNewContracts ?? 0);
+  const validators = new Set(
+    recentBlocks
+      .map((b) => {
+        const m = b.miner as { hash?: string } | string | undefined;
+        return typeof m === "string" ? m : m?.hash ?? "";
+      })
+      .filter(Boolean),
+  ).size;
 
   return {
     stats: {
@@ -60,7 +70,8 @@ export async function getDashboardData() {
       totalContracts,
       contractChange: growthFromAdded(totalContracts, newContracts24h),
       transactionsToday: Number(stats.transactions_today ?? newTxns24h),
-      averageBlockTime: Number(stats.average_block_time ?? 0),
+      averageBlockTime: avgBlockMs,
+      validators,
       latestBlock: null as string | number | null,
     },
     txChart: txChart.chart_data ?? [],
@@ -71,8 +82,6 @@ export async function getDashboardData() {
       acc[r.category] = (acc[r.category] ?? 0) + r.tvlUsd;
       return acc;
     }, {}),
-    blocks: [] as Array<Record<string, unknown>>,
-    transactions: [] as Array<Record<string, unknown>>,
   };
 }
 

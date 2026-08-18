@@ -425,11 +425,6 @@ export const Icons = {
       <path d="M22 2l-7 20-4-9-9-4 20-7z" />
     </Svg>
   ),
-  Paperclip: (p: IconProps) => (
-    <Svg {...p}>
-      <path d="M21.4 11.6l-9.2 9.2a6 6 0 01-8.5-8.5l9.2-9.2a4 4 0 015.7 5.7l-9.2 9.2a2 2 0 01-2.8-2.8l8.5-8.5" />
-    </Svg>
-  ),
   Sparkles: (p: IconProps) => (
     <Svg {...p}>
       <path d="M12 3l1.2 4.2L17 8.5l-3.8 1.3L12 14l-1.2-4.2L7 8.5l3.8-1.3L12 3z" />

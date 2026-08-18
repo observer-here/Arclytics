@@ -11,7 +11,7 @@ import { loadDashboard } from "@/libs/prefetch";
 import { compact, usd } from "@/utils/format";
 
 export function DashboardPage() {
-  const { data: loaded, loading, error } = useAsyncData("dashboard-v3", loadDashboard);
+  const { data: loaded, loading, error } = useAsyncData("dashboard-v4", loadDashboard);
 
   if (loading) return <div className="text-sm text-ink-400">Loading…</div>;
   if (error) return <div className="text-sm text-ink-400">{error}</div>;
@@ -54,7 +54,12 @@ export function DashboardPage() {
       <div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
         <TopProtocols rows={data.rankings} />
         <TopTokens rows={topTokens} />
-        <NetworkOverview byCategory={data.byCategory} avgBlockTime={data.stats.averageBlockTime} tps={tps} />
+        <NetworkOverview
+          byCategory={data.byCategory}
+          validators={data.stats.validators}
+          avgBlockTime={data.stats.averageBlockTime}
+          tps={tps}
+        />
       </div>
 
       <div className="grid gap-2 xl:grid-cols-2">
