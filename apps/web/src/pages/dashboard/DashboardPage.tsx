@@ -11,19 +11,16 @@ import { loadDashboard } from "@/libs/prefetch";
 import { compact, usd } from "@/utils/format";
 
 export function DashboardPage() {
-  const { data: loaded, loading, error } = useAsyncData("dashboard-v4", loadDashboard);
+  const { data: loaded, loading, error } = useAsyncData("dashboard-v5", loadDashboard);
 
   if (loading) return <div className="text-sm text-ink-400">Loading…</div>;
   if (error) return <div className="text-sm text-ink-400">{error}</div>;
   if (!loaded) return null;
 
   const { data, topTokens } = loaded;
-  const txSpark = (data.txChart ?? []).slice(-14).map((d) => d.transactions_count);
+  const txSpark = (data.txChart ?? []).slice(-14).map((d) => d.value);
   const addrSpark = (data.addressChart ?? []).slice(-14).map((d) => d.value);
-  const chartSeries = (data.txChart ?? [])
-    .slice()
-    .reverse()
-    .map((d) => ({ date: d.date, value: d.transactions_count }));
+  const chartSeries = (data.txChart ?? []).map((d) => ({ date: d.date, value: d.value }));
   const addressSeries = (data.addressChart ?? []).map((d) => ({
     date: d.date,
     value: d.value,
@@ -47,7 +44,7 @@ export function DashboardPage() {
 
       <div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
         <AreaChartCard title="New Addresses" data={addressSeries} color="#2563eb" />
-        <BarChartCard title="Transactions (Daily)" data={chartSeries} color="#8b5cf6" />
+        <BarChartCard title="Transactions (Daily)" data={chartSeries} color="#8b5cf6" defaultRange="1Y" />
         <BarChartCard title="USDC Volume" data={usdcVolumeSeries} color="#06b6d4" />
       </div>
 

@@ -17,9 +17,7 @@ export async function getDashboardData() {
     recentBlocks,
   ] = await Promise.all([
     arcscan.stats().catch(() => ({}) as Record<string, unknown>),
-    arcscan.txChart().catch(() => ({
-      chart_data: [] as Array<{ date: string; transactions_count: number }>,
-    })),
+    arcscan.txChart().catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
     arcscan.newAccountsChart().catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
     arcscan.usdcVolumeChart().catch(() => [] as Array<{ date: string; value: number; approx?: boolean }>),
     arcscan.smartContractCounters().catch(() => ({}) as Record<string, string>),
@@ -74,7 +72,7 @@ export async function getDashboardData() {
       validators,
       latestBlock: null as string | number | null,
     },
-    txChart: txChart.chart_data ?? [],
+    txChart,
     addressChart,
     usdcVolumeChart,
     rankings,

@@ -390,12 +390,14 @@ export function BarChartCard({
   title,
   data,
   color = "#8b5cf6",
+  defaultRange = "30D",
 }: {
   title: string;
   data: Point[];
   color?: string;
+  defaultRange?: Range;
 }) {
-  const [range, setRange] = useState<Range>("30D");
+  const [range, setRange] = useState<Range>(defaultRange);
   const [active, setActive] = useState<number | null>(null);
   const [tip, setTip] = useState<{ point: Point; x: number; y: number } | null>(null);
   const box = useRef<HTMLDivElement>(null);

@@ -51,43 +51,24 @@ async function paged<T>(path: string, params?: PageParams): Promise<Paged<T>> {
   };
 }
 
+async function statsLine(name: string) {
+  const data = await getStats<{
+    chart: Array<{ date: string; value: string; is_approximate?: boolean }>;
+  }>(`/lines/${encodeURIComponent(name)}`);
+  return (data.chart ?? []).map((d) => ({
+    date: d.date,
+    value: Number(d.value ?? 0),
+    approx: Boolean(d.is_approximate),
+  }));
+}
+
 export const arcscan = {
   stats: () => get<Record<string, unknown>>("/stats"),
-  txChart: () =>
-    get<{ chart_data: Array<{ date: string; transactions_count: number }> }>(
-      "/stats/charts/transactions",
-    ),
-  newAccountsChart: async () => {
-    const data = await getStats<{
-      chart: Array<{ date: string; value: string; is_approximate?: boolean }>;
-    }>("/lines/newAccounts");
-    return (data.chart ?? []).map((d) => ({
-      date: d.date,
-      value: Number(d.value ?? 0),
-      approx: Boolean(d.is_approximate),
-    }));
-  },
+  txChart: () => statsLine("newTxns"),
+  newAccountsChart: () => statsLine("newAccounts"),
   /** Daily USDC transfer count (native coin) — used as network volume proxy. */
-  usdcVolumeChart: async () => {
-    const data = await getStats<{
-      chart: Array<{ date: string; value: string; is_approximate?: boolean }>;
-    }>("/lines/newNativeCoinTransfers");
-    return (data.chart ?? []).map((d) => ({
-      date: d.date,
-      value: Number(d.value ?? 0),
-      approx: Boolean(d.is_approximate),
-    }));
-  },
-  statsLine: async (name: string) => {
-    const data = await getStats<{
-      chart: Array<{ date: string; value: string; is_approximate?: boolean }>;
-    }>(`/lines/${encodeURIComponent(name)}`);
-    return (data.chart ?? []).map((d) => ({
-      date: d.date,
-      value: Number(d.value ?? 0),
-      approx: Boolean(d.is_approximate),
-    }));
-  },
+  usdcVolumeChart: () => statsLine("newNativeCoinTransfers"),
+  statsLine,
   statsCounters: async () => {
     const data = await getStats<{
       counters: Array<{ id: string; value: string; title?: string }>;

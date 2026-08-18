@@ -88,16 +88,13 @@ async function enrichTransfers(collections: NftCollection[], limit = 40) {
 export async function loadNftDashboard(): Promise<NftDashboard> {
   const [collections, txChart, counters] = await Promise.all([
     fetchCollections(),
-    arcscan.txChart().catch(() => ({ chart_data: [] as Array<{ date: string; transactions_count: number }> })),
+    arcscan.txChart().catch(() => [] as Array<{ date: string; value: number }>),
     arcscan.statsCounters().catch(() => ({} as Record<string, number>)),
   ]);
 
   const enriched = await enrichTransfers(collections);
 
-  const activity = (txChart.chart_data ?? [])
-    .slice()
-    .reverse()
-    .map((d) => ({ date: d.date, value: d.transactions_count }));
+  const activity = txChart.map((d) => ({ date: d.date, value: d.value }));
 
   const holderAccounts = enriched.reduce((s, c) => s + c.holders, 0);
   const transfers = enriched.reduce((s, c) => s + (c.transfers ?? 0), 0);
