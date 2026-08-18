@@ -192,7 +192,7 @@ function tvlContracts(p: ProtocolConfig) {
 
 function transferPages(p: ProtocolConfig) {
   if (p.slug === "xylonet" || p.slug === "synthra") return 8;
-  if (p.slug === "lunex" || p.slug === "defi-on-arc" || p.slug === "flowswap") return 6;
+  if (p.slug === "lunex" || p.slug === "defi-on-arc" || p.slug === "flowswap" || p.slug === "tower") return 6;
   if (p.category === "bridge" || p.slug === "payx") return 4;
   return 3;
 }
@@ -260,7 +260,7 @@ async function sampleActivity(arc: Arcscan, p: ProtocolConfig) {
   const userBuckets = emptyDays(HIST_DAYS);
   const users24 = new Set<string>();
   const usersByDay = Array.from({ length: HIST_DAYS }, () => new Set<string>());
-  const contracts = p.contracts.slice(0, 4);
+  const contracts = p.contracts.slice(0, p.slug === "tower" ? 9 : 4);
   const maxPages = transferPages(p);
 
   let newest24 = 0;
