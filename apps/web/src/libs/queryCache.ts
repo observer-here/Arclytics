@@ -5,21 +5,16 @@ type Entry = {
 };
 
 const store = new Map<string, Entry>();
-export const CACHE_TTL = 60_000;
+const TTL = 60_000;
 
 export function peekCache<T>(key: string): T | undefined {
   return store.get(key)?.value as T | undefined;
 }
 
-export function setCache<T>(key: string, value: T) {
-  const cur = store.get(key);
-  store.set(key, { value, at: Date.now(), promise: cur?.promise });
-}
-
 export function fetchCache<T>(
   key: string,
   loader: () => Promise<T>,
-  ttl = CACHE_TTL,
+  ttl = TTL,
 ): Promise<T> {
   const cur = store.get(key);
   if (cur?.promise) return cur.promise as Promise<T>;

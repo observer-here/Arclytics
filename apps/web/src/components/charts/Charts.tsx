@@ -4,6 +4,41 @@ import { compact, num } from "@/utils/format";
 type Range = "7D" | "30D" | "90D" | "1Y" | "All";
 type Point = { date: string; value: number };
 
+const RANGES: Range[] = ["7D", "30D", "90D", "1Y", "All"];
+const RANGE_STORE = "arclytics.chartRange";
+
+function loadRange(id: string): Range {
+  try {
+    const all = JSON.parse(localStorage.getItem(RANGE_STORE) || "{}") as Record<string, string>;
+    const v = all[id];
+    if (RANGES.includes(v as Range)) return v as Range;
+  } catch {
+    /* ignore */
+  }
+  return "7D";
+}
+
+function saveRange(id: string, range: Range) {
+  try {
+    const all = JSON.parse(localStorage.getItem(RANGE_STORE) || "{}") as Record<string, Range>;
+    all[id] = range;
+    localStorage.setItem(RANGE_STORE, JSON.stringify(all));
+  } catch {
+    /* ignore */
+  }
+}
+
+function useChartRange(id: string) {
+  const [range, setRange] = useState<Range>(() => loadRange(id));
+  return [
+    range,
+    (next: Range) => {
+      setRange(next);
+      saveRange(id, next);
+    },
+  ] as const;
+}
+
 function RangeButtons({
   range,
   onChange,
@@ -12,8 +47,8 @@ function RangeButtons({
   onChange: (r: Range) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-0.5">
-      {(["7D", "30D", "90D", "1Y", "All"] as Range[]).map((r) => (
+    <div className="flex shrink-0 flex-wrap justify-end gap-0.5">
+      {RANGES.map((r) => (
         <button
           key={r}
           type="button"
@@ -27,6 +62,20 @@ function RangeButtons({
       ))}
     </div>
   );
+}
+
+function plotIndex(el: HTMLElement, n: number, clientX: number, bars?: boolean) {
+  const t = (clientX - el.getBoundingClientRect().left) / Math.max(el.clientWidth, 1);
+  if (bars) return Math.max(0, Math.min(n - 1, Math.floor(t * n)));
+  return Math.max(0, Math.min(n - 1, Math.round(t * Math.max(n - 1, 1))));
+}
+
+function tipPos(el: HTMLElement, clientX: number, clientY: number) {
+  const r = el.getBoundingClientRect();
+  return {
+    x: Math.min(r.width - 24, Math.max(24, clientX - r.left)),
+    y: Math.max(16, Math.min(r.height - 8, clientY - r.top - 8)),
+  };
 }
 
 function useRangeData(data: Point[], range: Range) {
@@ -67,12 +116,12 @@ function ChartHeader({
   const hasRange = firstIdx >= 0 && firstIdx < sliced.length - 1;
 
   return (
-    <div className="mb-1.5 space-y-1">
-      <div className="flex items-center justify-between gap-2">
-        <div className="panel-title">{title}</div>
+    <div className="mb-1.5 min-w-0 space-y-1">
+      <div className="flex min-w-0 items-center justify-between gap-1">
+        <div className="panel-title min-w-0 truncate">{title}</div>
         <RangeButtons range={range} onChange={onRange} />
       </div>
-      <div className="flex items-baseline gap-2">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <div className="text-lg font-semibold tracking-tight text-ink-900">
           {compact(latest)}
         </div>
@@ -106,7 +155,7 @@ function YAxis({
   }));
   return (
     <div
-      className="relative w-9 shrink-0 text-right text-[9px] leading-none text-ink-400"
+      className="relative w-9 shrink-0 overflow-hidden text-right text-[9px] leading-none text-ink-400"
       style={{ height: h }}
     >
       {ticks.map((t) => (
@@ -133,7 +182,7 @@ function Tip({
 }) {
   return (
     <div
-      className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-md border border-ink-200 bg-white px-2 py-1 shadow-sm"
+      className="pointer-events-none absolute z-20 max-w-[70%] -translate-x-1/2 -translate-y-full rounded-md border border-ink-200 bg-white px-2 py-1 shadow-sm"
       style={{ left: x, top: y }}
     >
       <div className="text-[10px] text-ink-400">{point.date}</div>
@@ -153,14 +202,13 @@ export function AreaChartCard({
   color?: string;
   mode?: "stock" | "flow";
 }) {
-  const [range, setRange] = useState<Range>("30D");
+  const [range, onRange] = useChartRange(title);
   const [tip, setTip] = useState<{ point: Point; x: number; y: number } | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const sliced = useRangeData(data, range);
   const values = sliced.map((d) => d.value);
   const max = Math.max(...values, 1);
   const min = Math.min(...values.filter((v) => v > 0), max);
-  // TVL stock charts: zoom to range so 7D/30D movement is visible
   const yMin = min > 0 && max / min < 50 ? min * 0.998 : 0;
   const yMax = max;
   const span = yMax - yMin || 1;
@@ -176,29 +224,27 @@ export function AreaChartCard({
   const area = `${pad},${h - pad} ${line} ${w - pad},${h - pad}`;
   const gradId = `fill-${title.replace(/\W+/g, "-")}`;
 
-  const showAt = (i: number, clientX: number, clientY: number) => {
+  const showAt = (clientX: number, clientY: number) => {
     const el = box.current;
-    if (!el || !sliced[i]) return;
-    const r = el.getBoundingClientRect();
-    setTip({
-      point: sliced[i],
-      x: clientX - r.left,
-      y: Math.max(12, clientY - r.top - 8),
-    });
+    if (!el || !sliced.length) return;
+    const i = plotIndex(el, sliced.length, clientX);
+    setTip({ point: sliced[i], ...tipPos(el, clientX, clientY) });
   };
 
   return (
-    <div className="card p-2.5">
-      <ChartHeader title={title} sliced={sliced} range={range} onRange={setRange} mode={mode} />
+    <div className="card min-w-0 overflow-hidden p-2.5">
+      <ChartHeader title={title} sliced={sliced} range={range} onRange={onRange} mode={mode} />
       {!sliced.length ? (
         <div className="flex h-[110px] items-center justify-center text-xs text-ink-400">No data</div>
       ) : (
-        <div className="flex gap-1">
+        <div className="flex min-w-0 gap-1">
           <YAxis max={yMax} min={yMin} h={h} />
           <div
             ref={box}
-            className="relative min-w-0 flex-1"
-            onMouseLeave={() => setTip(null)}
+            className="relative min-w-0 flex-1 touch-pan-y"
+            onPointerLeave={() => setTip(null)}
+            onPointerMove={(e) => showAt(e.clientX, e.clientY)}
+            onPointerDown={(e) => showAt(e.clientX, e.clientY)}
           >
             {tip && <Tip point={tip.point} x={tip.x} y={tip.y} />}
             <svg viewBox={`0 0 ${w} ${h}`} className="h-[110px] w-full" preserveAspectRatio="none">
@@ -221,24 +267,6 @@ export function AreaChartCard({
               ))}
               <polygon points={area} fill={`url(#${gradId})`} />
               <polyline points={line} fill="none" stroke={color} strokeWidth="2" />
-              {sliced.map((d, i) => {
-                const x0 = pad + ((i - 0.5) / Math.max(sliced.length - 1, 1)) * (w - pad * 2);
-                const x1 = pad + ((i + 0.5) / Math.max(sliced.length - 1, 1)) * (w - pad * 2);
-                return (
-                  <rect
-                    key={`h-${d.date}`}
-                    x={Math.max(pad, x0)}
-                    y={pad}
-                    width={Math.max(4, x1 - x0)}
-                    height={h - pad * 2}
-                    fill="transparent"
-                    className="cursor-crosshair"
-                    onMouseEnter={(e) => showAt(i, e.clientX, e.clientY)}
-                    onMouseMove={(e) => showAt(i, e.clientX, e.clientY)}
-                    onClick={(e) => showAt(i, e.clientX, e.clientY)}
-                  />
-                );
-              })}
             </svg>
           </div>
         </div>
@@ -322,7 +350,7 @@ export function MultiLineChart({
   title: string;
   series: Array<{ label: string; color: string; data: Point[] }>;
 }) {
-  const [range, setRange] = useState<Range>("30D");
+  const [range, onRange] = useChartRange(title);
   const n =
     range === "7D"
       ? 7
@@ -343,10 +371,10 @@ export function MultiLineChart({
   const pad = 4;
 
   return (
-    <div className="card p-2.5">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <div className="panel-title">{title}</div>
-        <RangeButtons range={range} onChange={setRange} />
+    <div className="card min-w-0 overflow-hidden p-2.5">
+      <div className="mb-1.5 flex min-w-0 items-center justify-between gap-1">
+        <div className="panel-title min-w-0 truncate">{title}</div>
+        <RangeButtons range={range} onChange={onRange} />
       </div>
       <div className="mb-1.5 flex flex-wrap gap-2">
         {sliced.map((s) => (
@@ -356,9 +384,9 @@ export function MultiLineChart({
           </span>
         ))}
       </div>
-      <div className="flex gap-1">
+      <div className="flex min-w-0 gap-1">
         <YAxis max={max} h={h} />
-        <svg viewBox={`0 0 ${w} ${h}`} className="h-[120px] w-full" preserveAspectRatio="none">
+        <svg viewBox={`0 0 ${w} ${h}`} className="h-[120px] min-w-0 w-full" preserveAspectRatio="none">
           {[0.25, 0.5, 0.75].map((t) => (
             <line
               key={t}
@@ -392,80 +420,66 @@ export function BarChartCard({
   title,
   data,
   color = "#8b5cf6",
-  defaultRange = "30D",
 }: {
   title: string;
   data: Point[];
   color?: string;
-  defaultRange?: Range;
 }) {
-  const [range, setRange] = useState<Range>(defaultRange);
+  const [range, onRange] = useChartRange(title);
   const [active, setActive] = useState<number | null>(null);
   const [tip, setTip] = useState<{ point: Point; x: number; y: number } | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const sliced = useRangeData(data, range);
   const max = Math.max(...sliced.map((d) => d.value), 1);
+  const w = 520;
   const h = 110;
+  const pad = 4;
+  const bw = sliced.length ? (w - pad * 2) / sliced.length : 0;
 
-  const showAt = (i: number, clientX: number, clientY: number) => {
+  const showAt = (clientX: number, clientY: number) => {
     const el = box.current;
-    if (!el || !sliced[i]) return;
-    const r = el.getBoundingClientRect();
+    if (!el || !sliced.length) return;
+    const i = plotIndex(el, sliced.length, clientX, true);
     setActive(i);
-    setTip({
-      point: sliced[i],
-      x: clientX - r.left,
-      y: Math.max(12, clientY - r.top - 8),
-    });
-  };
-
-  const clear = () => {
-    setActive(null);
-    setTip(null);
+    setTip({ point: sliced[i], ...tipPos(el, clientX, clientY) });
   };
 
   return (
-    <div className="card p-2.5">
-      <ChartHeader title={title} sliced={sliced} range={range} onRange={setRange} />
+    <div className="card min-w-0 overflow-hidden p-2.5">
+      <ChartHeader title={title} sliced={sliced} range={range} onRange={onRange} />
       {!sliced.length ? (
         <div className="flex h-[110px] items-center justify-center text-xs text-ink-400">No data</div>
       ) : (
-        <div className="flex gap-1">
+        <div className="flex min-w-0 gap-1">
           <YAxis max={max} h={h} />
           <div
             ref={box}
-            className="relative flex h-[110px] min-w-0 flex-1 items-end gap-px"
-            onMouseLeave={clear}
+            className="relative min-w-0 flex-1 touch-pan-y"
+            onPointerLeave={() => {
+              setActive(null);
+              setTip(null);
+            }}
+            onPointerMove={(e) => showAt(e.clientX, e.clientY)}
+            onPointerDown={(e) => showAt(e.clientX, e.clientY)}
           >
             {tip && <Tip point={tip.point} x={tip.x} y={tip.y} />}
-            {sliced.map((d, i) => (
-              <button
-                key={d.date}
-                type="button"
-                aria-label={`${d.date}: ${num(d.value)}`}
-                className="min-w-0 flex-1 rounded-t-[2px] transition"
-                style={{
-                  height: `${Math.max(3, (d.value / max) * 100)}%`,
-                  background: color,
-                  opacity: active == null || active === i ? 0.95 : 0.35,
-                }}
-                onMouseEnter={(e) => showAt(i, e.clientX, e.clientY)}
-                onMouseMove={(e) => showAt(i, e.clientX, e.clientY)}
-                onFocus={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  const boxR = box.current?.getBoundingClientRect();
-                  if (!boxR) return;
-                  setActive(i);
-                  setTip({
-                    point: d,
-                    x: r.left - boxR.left + r.width / 2,
-                    y: r.top - boxR.top,
-                  });
-                }}
-                onBlur={clear}
-                onClick={(e) => showAt(i, e.clientX, e.clientY)}
-              />
-            ))}
+            <svg viewBox={`0 0 ${w} ${h}`} className="h-[110px] w-full" preserveAspectRatio="none">
+              {sliced.map((d, i) => {
+                const bh = Math.max(2, (d.value / max) * (h - pad * 2));
+                return (
+                  <rect
+                    key={d.date}
+                    x={pad + i * bw}
+                    y={h - pad - bh}
+                    width={Math.max(0.4, bw * 0.85)}
+                    height={bh}
+                    rx="1"
+                    fill={color}
+                    opacity={active == null || active === i ? 0.95 : 0.35}
+                  />
+                );
+              })}
+            </svg>
           </div>
         </div>
       )}

@@ -1,83 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { TimeAgo } from "@/components/shared/TimeAgo";
-import {
-  fetchLatestRpcBlocks,
-  subscribeRpcBlocks,
-  type LiveBlock,
-} from "@/libs/arcRpc";
+import { peekLiveFeed, subscribeLiveFeed } from "@/libs/arcRpc";
 import { paths } from "@/routes/paths";
 import { num, shortHash } from "@/utils/format";
-
-const LIMIT = 12;
+import { Skel } from "@/components/shared/Skel";
 
 export function RecentBlocks() {
-  const [blocks, setBlocks] = useState<LiveBlock[]>([]);
-  const [fresh, setFresh] = useState<Set<number>>(() => new Set());
-  const [live, setLive] = useState(false);
-  const seen = useRef(new Set<number>());
-
-  useEffect(() => {
-    let alive = true;
-
-    const markFresh = (nums: number[]) => {
-      if (!nums.length) return;
-      const next = new Set(nums);
-      setFresh(next);
-      window.setTimeout(() => {
-        if (!alive) return;
-        setFresh((cur) => {
-          const copy = new Set(cur);
-          for (const n of next) copy.delete(n);
-          return copy;
-        });
-      }, 900);
-    };
-
-    const bootstrap = async () => {
-      try {
-        const latest = await fetchLatestRpcBlocks(LIMIT);
-        if (!alive) return;
-        seen.current = new Set(latest.map((b) => b.number));
-        setBlocks(latest);
-        setLive(true);
-      } catch {
-        if (alive) setLive(false);
-      }
-    };
-
-    void bootstrap();
-
-    const stop = subscribeRpcBlocks((block) => {
-      if (!alive) return;
-      setLive(true);
-      if (seen.current.has(block.number)) return;
-      seen.current.add(block.number);
-      markFresh([block.number]);
-      setBlocks((prev) => [block, ...prev].slice(0, LIMIT));
-    });
-
-    const fallback = window.setInterval(() => {
-      void fetchLatestRpcBlocks(LIMIT)
-        .then((latest) => {
-          if (!alive) return;
-          const novel = latest.filter((b) => !seen.current.has(b.number));
-          for (const b of latest) seen.current.add(b.number);
-          if (novel.length) markFresh(novel.map((b) => b.number));
-          setBlocks(latest);
-          setLive(true);
-        })
-        .catch(() => {
-          if (alive) setLive(false);
-        });
-    }, 5_000);
-
-    return () => {
-      alive = false;
-      stop();
-      window.clearInterval(fallback);
-    };
-  }, []);
+  const { blocks, live, freshBlock } = useSyncExternalStore(subscribeLiveFeed, peekLiveFeed, peekLiveFeed);
 
   return (
     <div className="card p-2.5">
@@ -109,31 +39,34 @@ export function RecentBlocks() {
           </tr>
         </thead>
         <tbody>
-          {blocks.map((b) => {
-            const isNew = fresh.has(b.number);
-            return (
-              <tr
-                key={b.hash || b.number}
-                className={`border-t border-ink-100 ${isNew ? "tx-enter" : ""}`}
-              >
-                <td className="py-1.5 font-medium text-ink-800">#{num(b.number)}</td>
-                <td className="py-1.5 font-mono text-[11px] text-ink-500">
-                  {shortHash(b.hash, 8, 6)}
-                </td>
-                <td className="py-1.5 text-ink-600">{b.txCount}</td>
-                <td className="py-1.5 text-right text-ink-400">
-                  <TimeAgo ts={b.timestamp} />
-                </td>
-              </tr>
-            );
-          })}
-          {!blocks.length && (
-            <tr>
-              <td colSpan={4} className="py-6 text-center text-ink-400">
-                Waiting for blocks…
+          {blocks.map((b) => (
+            <tr
+              key={b.hash || b.number}
+              className={`border-t border-ink-100 ${freshBlock.has(b.number) ? "tx-enter" : ""}`}
+            >
+              <td className="py-1.5 font-medium text-ink-800">#{num(b.number)}</td>
+              <td className="py-1.5 font-mono text-[11px] text-ink-500">
+                {shortHash(b.hash, 8, 6)}
+              </td>
+              <td className="py-1.5 text-ink-600">{b.txCount}</td>
+              <td className="py-1.5 text-right text-ink-400">
+                <TimeAgo ts={b.timestamp} />
               </td>
             </tr>
-          )}
+          ))}
+          {!blocks.length &&
+            Array.from({ length: 8 }, (_, i) => (
+              <tr key={i} className="border-t border-ink-100">
+                <td className="py-1.5" colSpan={4}>
+                  <div className="flex items-center gap-2">
+                    <Skel className="h-3.5 w-16" />
+                    <Skel className="h-3.5 w-24" />
+                    <Skel className="h-3.5 w-8" />
+                    <Skel className="h-3.5 flex-1" />
+                  </div>
+                </td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </div>

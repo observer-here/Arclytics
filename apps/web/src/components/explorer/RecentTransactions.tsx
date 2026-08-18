@@ -1,91 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { TimeAgo } from "@/components/shared/TimeAgo";
-import {
-  fetchLatestRpcTxs,
-  subscribeRpcBlocks,
-  type LiveTx,
-} from "@/libs/arcRpc";
+import { peekLiveFeed, subscribeLiveFeed } from "@/libs/arcRpc";
 import { paths } from "@/routes/paths";
 import { shortHash } from "@/utils/format";
-
-const LIMIT = 12;
+import { Skel } from "@/components/shared/Skel";
 
 export function RecentTransactions() {
-  const [txs, setTxs] = useState<LiveTx[]>([]);
-  const [fresh, setFresh] = useState<Set<string>>(() => new Set());
-  const [live, setLive] = useState(false);
-  const seen = useRef(new Set<string>());
-
-  useEffect(() => {
-    let alive = true;
-
-    const markFresh = (hashes: string[]) => {
-      if (!hashes.length) return;
-      const newHashes = new Set(hashes);
-      setFresh(newHashes);
-      window.setTimeout(() => {
-        if (!alive) return;
-        setFresh((cur) => {
-          const next = new Set(cur);
-          for (const h of newHashes) next.delete(h);
-          return next;
-        });
-      }, 900);
-    };
-
-    const bootstrap = async () => {
-      try {
-        const latest = await fetchLatestRpcTxs(LIMIT);
-        if (!alive) return;
-        seen.current = new Set(latest.map((t) => t.hash));
-        setTxs(latest);
-        setLive(true);
-      } catch {
-        if (alive) setLive(false);
-      }
-    };
-
-    void bootstrap();
-
-    const stop = subscribeRpcBlocks((block) => {
-      if (!alive || !block.txs.length) return;
-      setLive(true);
-      const novel = block.txs.filter((tx) => !seen.current.has(tx.hash));
-      if (!novel.length) return;
-      for (const tx of novel) seen.current.add(tx.hash);
-      markFresh(novel.map((t) => t.hash));
-      setTxs((prev) => {
-        const merged = [...novel, ...prev];
-        const uniq = new Map<string, LiveTx>();
-        for (const tx of merged) {
-          if (!uniq.has(tx.hash)) uniq.set(tx.hash, tx);
-        }
-        return [...uniq.values()].slice(0, LIMIT);
-      });
-    });
-
-    const fallback = window.setInterval(() => {
-      void fetchLatestRpcTxs(LIMIT)
-        .then((latest) => {
-          if (!alive) return;
-          const novel = latest.filter((tx) => !seen.current.has(tx.hash));
-          for (const tx of latest) seen.current.add(tx.hash);
-          if (novel.length) markFresh(novel.map((t) => t.hash));
-          setTxs(latest);
-          setLive(true);
-        })
-        .catch(() => {
-          if (alive) setLive(false);
-        });
-    }, 5_000);
-
-    return () => {
-      alive = false;
-      stop();
-      window.clearInterval(fallback);
-    };
-  }, []);
+  const { txs, live, freshTx } = useSyncExternalStore(subscribeLiveFeed, peekLiveFeed, peekLiveFeed);
 
   return (
     <div className="card p-2.5">
@@ -117,33 +39,36 @@ export function RecentTransactions() {
           </tr>
         </thead>
         <tbody>
-          {txs.map((tx) => {
-            const isNew = fresh.has(tx.hash);
-            return (
-              <tr
-                key={tx.hash}
-                className={`border-t border-ink-100 ${isNew ? "tx-enter" : ""}`}
-              >
-                <td className="py-1.5 font-mono text-[11px] text-ink-700">
-                  {shortHash(tx.hash, 8, 6)}
-                </td>
-                <td className="py-1.5 text-ink-600">{tx.method}</td>
-                <td className="py-1.5 font-mono text-[11px] text-ink-500">
-                  {shortHash(tx.from.hash)}
-                </td>
-                <td className="py-1.5 text-right text-ink-400">
-                  <TimeAgo ts={tx.timestamp} />
-                </td>
-              </tr>
-            );
-          })}
-          {!txs.length && (
-            <tr>
-              <td colSpan={4} className="py-6 text-center text-ink-400">
-                Waiting for transactions…
+          {txs.map((tx) => (
+            <tr
+              key={tx.hash}
+              className={`border-t border-ink-100 ${freshTx.has(tx.hash) ? "tx-enter" : ""}`}
+            >
+              <td className="py-1.5 font-mono text-[11px] text-ink-700">
+                {shortHash(tx.hash, 8, 6)}
+              </td>
+              <td className="py-1.5 text-ink-600">{tx.method}</td>
+              <td className="py-1.5 font-mono text-[11px] text-ink-500">
+                {shortHash(tx.from.hash)}
+              </td>
+              <td className="py-1.5 text-right text-ink-400">
+                <TimeAgo ts={tx.timestamp} />
               </td>
             </tr>
-          )}
+          ))}
+          {!txs.length &&
+            Array.from({ length: 8 }, (_, i) => (
+              <tr key={i} className="border-t border-ink-100">
+                <td className="py-1.5" colSpan={4}>
+                  <div className="flex items-center gap-2">
+                    <Skel className="h-3.5 w-24" />
+                    <Skel className="h-3.5 w-16" />
+                    <Skel className="h-3.5 flex-1" />
+                    <Skel className="h-3.5 w-10" />
+                  </div>
+                </td>
+              </tr>
+            ))}
         </tbody>
       </table>
     </div>

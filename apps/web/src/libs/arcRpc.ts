@@ -91,8 +91,31 @@ export async function fetchLatestRpcBlocks(limit = 12): Promise<LiveBlock[]> {
   return blocks.filter(Boolean).map(mapBlock);
 }
 
-export async function fetchLatestRpcTxs(limit = 12): Promise<LiveTx[]> {
-  const blocks = await fetchLatestRpcBlocks(6);
+const LIVE_N = 12;
+
+type LiveSnap = {
+  txs: LiveTx[];
+  blocks: LiveBlock[];
+  live: boolean;
+  freshTx: Set<string>;
+  freshBlock: Set<number>;
+};
+
+let liveSnap: LiveSnap = {
+  txs: [],
+  blocks: [],
+  live: false,
+  freshTx: new Set(),
+  freshBlock: new Set(),
+};
+const liveListeners = new Set<() => void>();
+let liveStarted = false;
+const seenTx = new Set<string>();
+const seenBlock = new Set<number>();
+let txFreshT = 0;
+let blockFreshT = 0;
+
+function txsFrom(blocks: LiveBlock[], limit = LIVE_N) {
   const out: LiveTx[] = [];
   for (const b of blocks) {
     for (const tx of b.txs) {
@@ -101,6 +124,70 @@ export async function fetchLatestRpcTxs(limit = 12): Promise<LiveTx[]> {
     }
   }
   return out;
+}
+
+function emitLive() {
+  for (const fn of liveListeners) fn();
+}
+
+function patchLive(p: Partial<LiveSnap>) {
+  liveSnap = { ...liveSnap, ...p };
+  emitLive();
+}
+
+function applyBlocks(blocks: LiveBlock[], highlight: boolean) {
+  const novelB = blocks.filter((b) => !seenBlock.has(b.number)).map((b) => b.number);
+  const txs = txsFrom(blocks);
+  const novelT = txs.filter((t) => !seenTx.has(t.hash)).map((t) => t.hash);
+  for (const b of blocks) seenBlock.add(b.number);
+  for (const t of txs) seenTx.add(t.hash);
+  const next: Partial<LiveSnap> = { blocks: blocks.slice(0, LIVE_N), txs, live: true };
+  if (highlight && novelB.length) {
+    next.freshBlock = new Set(novelB);
+    window.clearTimeout(blockFreshT);
+    blockFreshT = window.setTimeout(() => patchLive({ freshBlock: new Set() }), 900);
+  }
+  if (highlight && novelT.length) {
+    next.freshTx = new Set(novelT);
+    window.clearTimeout(txFreshT);
+    txFreshT = window.setTimeout(() => patchLive({ freshTx: new Set() }), 900);
+  }
+  patchLive(next);
+}
+
+function ensureLiveFeed() {
+  if (liveStarted) return;
+  liveStarted = true;
+
+  void fetchLatestRpcBlocks(LIVE_N)
+    .then((blocks) => applyBlocks(blocks, false))
+    .catch(() => patchLive({ live: false }));
+
+  subscribeRpcBlocks((block) => {
+    if (seenBlock.has(block.number)) {
+      if (!liveSnap.live) patchLive({ live: true });
+      return;
+    }
+    applyBlocks([block, ...liveSnap.blocks], true);
+  });
+
+  window.setInterval(() => {
+    void fetchLatestRpcBlocks(LIVE_N)
+      .then((blocks) => applyBlocks(blocks, true))
+      .catch(() => undefined);
+  }, 5_000);
+}
+
+export function peekLiveFeed() {
+  return liveSnap;
+}
+
+export function subscribeLiveFeed(fn: () => void) {
+  liveListeners.add(fn);
+  ensureLiveFeed();
+  return () => {
+    liveListeners.delete(fn);
+  };
 }
 
 export function subscribeRpcBlocks(onBlock: (block: LiveBlock) => void): () => void {

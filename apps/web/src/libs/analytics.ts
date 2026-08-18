@@ -100,10 +100,10 @@ export async function loadAnalytics(): Promise<AnalyticsBundle> {
     ]);
 
   const stats = statsRaw as Record<string, unknown>;
-  const txSeries = txChart.map((d) => ({ date: d.date, value: d.value }));
-  const addressSeries = addressChart.map((d) => ({ date: d.date, value: d.value }));
-  const volumeSeries = volumeChart.map((d) => ({ date: d.date, value: d.value }));
-  const contractsSeries = contractsChart.map((d) => ({ date: d.date, value: d.value }));
+  const txSeries = txChart;
+  const addressSeries = addressChart;
+  const volumeSeries = volumeChart;
+  const contractsSeries = contractsChart;
 
   const txns24h = Number(counters.newTxns24h ?? stats.transactions_today ?? 0);
   const totalTxns = Number(stats.total_transactions ?? counters.totalTxns ?? 0);

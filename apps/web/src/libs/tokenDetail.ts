@@ -1,4 +1,3 @@
-import { curatedTokenMeta } from "@arclytics/chain";
 import { getTokenHistory, getTokens } from "@/libs/api";
 import { arcscan, type PageParams } from "@/libs/arcscan";
 import { lpPriceFromReserves, spotPriceFromPool } from "@/libs/lpPrice";
@@ -236,7 +235,7 @@ function holderDistribution(
 }
 
 export async function loadTokenDetail(address: string): Promise<TokenDetail | null> {
-  const meta = tokenMeta(address) ?? curatedTokenMeta(address);
+  const meta = tokenMeta(address);
   const feed = await getTokens().catch(() => ({ items: [] as Awaited<ReturnType<typeof getTokens>>["items"] }));
   const feedRow = feed.items.find((t) => t.address.toLowerCase() === address.toLowerCase());
   const ranked = [...feed.items].sort((a, b) => (b.marketCap ?? 0) - (a.marketCap ?? 0));

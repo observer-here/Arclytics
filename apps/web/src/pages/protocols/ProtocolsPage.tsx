@@ -1,6 +1,6 @@
 import { ProtocolsTable } from "@/components/protocols/ProtocolsTable";
 import { useAsyncData } from "@/hooks/useAsyncData";
-import { getProtocolRankings } from "@/libs/dashboard";
+import { getProtocolRankings } from "@/libs/api";
 
 export function ProtocolsPage() {
   const { data: rows, loading, error } = useAsyncData(

@@ -6,7 +6,7 @@ import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
 import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categories";
 import { CATEGORY_PILL } from "@/config/ecosystem";
 import { useAsyncData } from "@/hooks/useAsyncData";
-import { loadProtocolDetail } from "@/libs/protocolDetail";
+import { loadProtocolDetail } from "@/libs/api";
 import { isWatched, subscribeWatch, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { ago, compact, shortHash, usd } from "@/utils/format";

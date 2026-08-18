@@ -11,7 +11,7 @@ import {
 } from "@/config/ecosystem";
 import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categories";
 import { useAsyncData } from "@/hooks/useAsyncData";
-import { loadEcosystem } from "@/libs/prefetch";
+import { loadEcosystemFeed } from "@/libs/api";
 import { compact, usd } from "@/utils/format";
 
 type Row = {
@@ -63,7 +63,7 @@ function Change({ n }: { n?: number }) {
 }
 
 export function EcosystemPage() {
-  const { data, loading, error } = useAsyncData("ecosystem-v11", loadEcosystem);
+  const { data, loading, error } = useAsyncData("ecosystem-v11", loadEcosystemFeed);
   const [filter, setFilter] = useState<EcosystemFilterId>("all");
   const [sortBy, setSortBy] = useState<"tvl" | "change">("tvl");
   const [page, setPage] = useState(1);
