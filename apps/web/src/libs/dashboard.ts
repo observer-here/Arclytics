@@ -2,8 +2,7 @@ import { getProtocolRankings } from "./api";
 import { arcscan } from "./arcscan";
 import { growthFromAdded, lastCompleteValue, weightedChange } from "./seriesChange";
 
-export { getProtocolRankings } from "./api";
-export type { ProtocolRanking } from "./api";
+export { getProtocolRankings };
 
 export async function getDashboardData() {
   const [
@@ -36,7 +35,7 @@ export async function getDashboardData() {
   const totalContracts = Number(
     contractCounters.smart_contracts ?? counters.totalContracts ?? 0,
   );
-  const gasUsedToday = Number(stats.gas_used_today ?? 0);
+  const gasFees24h = Number(counters.txnsFee24h ?? 0);
   const newTxns24h = Number(counters.newTxns24h ?? stats.transactions_today ?? 0);
   const newAccounts24h = lastCompleteValue(addressChart) ?? 0;
   const avgBlockMs =
@@ -63,14 +62,13 @@ export async function getDashboardData() {
       addressChange: growthFromAdded(totalAddresses, newAccounts24h),
       totalBlocks,
       blockChange: growthFromAdded(totalBlocks, newBlocks24h),
-      gasUsedToday,
-      gasChange: undefined as number | undefined,
+      gasFees24h,
+      avgFeeUsdc: Number(counters.averageTxnFee24h ?? 0),
       totalContracts,
       contractChange: growthFromAdded(totalContracts, newContracts24h),
       transactionsToday: Number(stats.transactions_today ?? newTxns24h),
       averageBlockTime: avgBlockMs,
       validators,
-      latestBlock: null as string | number | null,
     },
     txChart,
     addressChart,

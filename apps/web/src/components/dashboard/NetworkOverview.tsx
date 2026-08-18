@@ -1,13 +1,17 @@
+import { usdc } from "@/utils/format";
+
 export function NetworkOverview({
   byCategory,
   validators = 0,
   avgBlockTime,
   tps,
+  avgFeeUsdc,
 }: {
   byCategory: Record<string, number>;
   validators?: number;
   avgBlockTime?: number;
   tps?: number;
+  avgFeeUsdc?: number;
 }) {
   const entries = Object.entries(byCategory).sort((a, b) => b[1] - a[1]);
   const total = entries.reduce((s, [, v]) => s + v, 0) || 1;
@@ -82,8 +86,10 @@ export function NetworkOverview({
           <div className="text-[12px] font-semibold">{tps != null ? tps.toFixed(1) : "—"}</div>
         </div>
         <div className="rounded-lg bg-ink-50 p-1.5">
-          <div className="text-[10px] text-ink-400">Indexer</div>
-          <div className="text-[12px] font-semibold text-emerald-600">Healthy</div>
+          <div className="text-[10px] text-ink-400">Avg Gas Fee</div>
+          <div className="text-[12px] font-semibold">
+            {avgFeeUsdc ? usdc(avgFeeUsdc) : "—"}
+          </div>
         </div>
       </div>
     </div>

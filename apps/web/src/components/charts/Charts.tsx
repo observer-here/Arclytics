@@ -146,10 +146,12 @@ export function AreaChartCard({
   title,
   data,
   color = "#2563eb",
+  mode = "stock",
 }: {
   title: string;
   data: Point[];
   color?: string;
+  mode?: "stock" | "flow";
 }) {
   const [range, setRange] = useState<Range>("30D");
   const [tip, setTip] = useState<{ point: Point; x: number; y: number } | null>(null);
@@ -187,7 +189,7 @@ export function AreaChartCard({
 
   return (
     <div className="card p-2.5">
-      <ChartHeader title={title} sliced={sliced} range={range} onRange={setRange} mode="stock" />
+      <ChartHeader title={title} sliced={sliced} range={range} onRange={setRange} mode={mode} />
       {!sliced.length ? (
         <div className="flex h-[110px] items-center justify-center text-xs text-ink-400">No data</div>
       ) : (

@@ -118,10 +118,6 @@ export function Sidebar({
               {tps != null ? tps.toFixed(1) : "—"}
             </span>
           </div>
-          <div className="flex justify-between gap-1">
-            <span>Indexer</span>
-            <span className="font-medium text-emerald-600">Healthy</span>
-          </div>
         </div>
         <div className="mt-2 flex items-center justify-between border-t border-ink-200 pt-1.5 text-ink-400">
           <a href="https://discord.com" target="_blank" rel="noreferrer" className="hover:text-ink-700" aria-label="Discord">

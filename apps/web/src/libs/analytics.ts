@@ -20,17 +20,13 @@ export type AnalyticsBundle = {
     activeAddresses: number;
     addressChange?: number;
     newAddresses24h: number;
-    newAddrChange?: number;
     tvlUsd: number;
     tvlChange?: number;
     volumeProxy: number;
     volumeChange?: number;
     fees24h: number;
-    feeChange?: number;
     avgFee: number;
     tps: number;
-    tpsChange?: number;
-    gasUsedToday: number;
     totalBlocks: number;
     totalTxns: number;
     totalAddresses: number;
@@ -172,18 +168,14 @@ export async function loadAnalytics(): Promise<AnalyticsBundle> {
       activeAddresses: totalAddresses,
       addressChange: growthFromAdded(totalAddresses, newAddresses24h),
       newAddresses24h,
-      newAddrChange: undefined,
       tvlUsd,
       tvlChange: weightedChange(rankings),
       volumeProxy: volumeToday,
       volumeChange:
         volumePrev > 0 ? ((volumeToday - volumePrev) / volumePrev) * 100 : undefined,
       fees24h,
-      feeChange: undefined,
       avgFee,
       tps,
-      tpsChange: undefined,
-      gasUsedToday: Number(stats.gas_used_today ?? 0),
       totalBlocks: Number(stats.total_blocks ?? counters.totalBlocks ?? 0),
       totalTxns,
       totalAddresses,

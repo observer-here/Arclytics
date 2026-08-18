@@ -9,7 +9,7 @@ import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categorie
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadAnalytics, type AnalyticsPoint, type HeatCell } from "@/libs/analytics";
 import { paths } from "@/routes/paths";
-import { compact, pct, usd } from "@/utils/format";
+import { compact, pct, usd, usdc } from "@/utils/format";
 
 const CACHE = "analytics-v7";
 const DONUT = ["#8b5cf6", "#3b82f6", "#06b6d4", "#10b981", "#f97316", "#94a3b8"];
@@ -391,11 +391,11 @@ export function AnalyticsPage() {
       <div className="metric-grid xl:grid-cols-7">
         <MetricCard label="Transactions" value={compact(m.txns24h)} change={m.txChange} icon={<Icons.Tx size={13} />} series={txSpark} color="#8b5cf6" />
         <MetricCard label="Active Addresses" value={compact(m.activeAddresses)} change={m.addressChange} icon={<Icons.Users size={13} />} series={addrSpark} color="#3b82f6" />
-        <MetricCard label="New Addresses" value={compact(m.newAddresses24h)} change={m.newAddrChange} icon={<Icons.Activity size={13} />} series={addrSpark} color="#06b6d4" />
+        <MetricCard label="New Addresses" value={compact(m.newAddresses24h)} icon={<Icons.Activity size={13} />} series={addrSpark} color="#06b6d4" />
         <MetricCard label="TVL" value={usd(m.tvlUsd)} change={m.tvlChange} icon={<Icons.Tvl size={13} />} color="#2563eb" />
         <MetricCard label="Total Volume" value={compact(m.volumeProxy)} change={m.volumeChange} icon={<Icons.Volume size={13} />} series={volSpark} color="#0ea5e9" />
-        <MetricCard label="Fees (USDC)" value={usd(m.fees24h)} change={m.feeChange} icon={<Icons.Fees size={13} />} color="#f59e0b" />
-        <MetricCard label="TPS (Live)" value={m.tps.toFixed(1)} change={m.tpsChange} icon={<Icons.Analytics size={13} />} series={txSpark} color="#10b981" />
+        <MetricCard label="Fees (USDC)" value={usdc(m.fees24h)} icon={<Icons.Fees size={13} />} color="#f59e0b" />
+        <MetricCard label="TPS (Live)" value={m.tps.toFixed(1)} icon={<Icons.Analytics size={13} />} series={txSpark} color="#10b981" />
       </div>
 
       {/* Row 2: Activity 50% | Heatmap 25% | Network Overview 25% */}
@@ -478,8 +478,8 @@ export function AnalyticsPage() {
               <dd className="font-medium text-ink-800">{compact(m.totalAddresses)}</dd>
             </div>
             <div className="flex justify-between gap-2">
-              <dt>Gas Used (24h)</dt>
-              <dd className="font-medium text-ink-800">{compact(m.gasUsedToday)}</dd>
+              <dt>Gas Fees (24h)</dt>
+              <dd className="font-medium text-ink-800">{usdc(m.fees24h)}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt>Total Transactions</dt>
@@ -488,7 +488,7 @@ export function AnalyticsPage() {
             <div className="flex justify-between gap-2">
               <dt>Avg Fee</dt>
               <dd className="font-medium text-ink-800">
-                {m.avgFee > 0 ? `${m.avgFee.toFixed(4)} USDC` : "—"}
+                {m.avgFee > 0 ? usdc(m.avgFee) : "—"}
               </dd>
             </div>
             <div className="flex justify-between gap-2">

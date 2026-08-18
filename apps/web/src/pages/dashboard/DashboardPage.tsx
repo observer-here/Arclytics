@@ -8,10 +8,10 @@ import { RecentBlocks } from "@/components/explorer/RecentBlocks";
 import { NetworkOverview } from "@/components/dashboard/NetworkOverview";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { loadDashboard } from "@/libs/prefetch";
-import { compact, usd } from "@/utils/format";
+import { compact, usd, usdc } from "@/utils/format";
 
 export function DashboardPage() {
-  const { data: loaded, loading, error } = useAsyncData("dashboard-v5", loadDashboard);
+  const { data: loaded, loading, error } = useAsyncData("dashboard-v7", loadDashboard);
 
   if (loading) return <div className="text-sm text-ink-400">Loading…</div>;
   if (error) return <div className="text-sm text-ink-400">{error}</div>;
@@ -38,12 +38,12 @@ export function DashboardPage() {
         <MetricCard label="Total Transactions" value={compact(data.stats.totalTransactions)} change={data.stats.txChange} icon={<Icons.Tx size={13} />} series={txSpark} color="#8b5cf6" />
         <MetricCard label="Total Addresses" value={compact(data.stats.totalAddresses)} change={data.stats.addressChange} icon={<Icons.Users size={13} />} series={addrSpark} color="#06b6d4" />
         <MetricCard label="Total Blocks" value={compact(data.stats.totalBlocks)} change={data.stats.blockChange} icon={<Icons.Blocks size={13} />} color="#6366f1" />
-        <MetricCard label="Gas Used (24h)" value={compact(data.stats.gasUsedToday)} change={data.stats.gasChange} icon={<Icons.Gas size={13} />} color="#f59e0b" />
+        <MetricCard label="Gas Fees (24h)" value={usdc(data.stats.gasFees24h)} icon={<Icons.Gas size={13} />} color="#f59e0b" />
         <MetricCard label="Total Contracts" value={compact(data.stats.totalContracts)} change={data.stats.contractChange} icon={<Icons.Contracts size={13} />} color="#10b981" />
       </div>
 
       <div className="grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
-        <AreaChartCard title="New Addresses" data={addressSeries} color="#2563eb" />
+        <AreaChartCard title="New Addresses" data={addressSeries} color="#2563eb" mode="flow" />
         <BarChartCard title="Transactions (Daily)" data={chartSeries} color="#8b5cf6" defaultRange="1Y" />
         <BarChartCard title="USDC Volume" data={usdcVolumeSeries} color="#06b6d4" />
       </div>
@@ -56,6 +56,7 @@ export function DashboardPage() {
           validators={data.stats.validators}
           avgBlockTime={data.stats.averageBlockTime}
           tps={tps}
+          avgFeeUsdc={data.stats.avgFeeUsdc}
         />
       </div>
 
