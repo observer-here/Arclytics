@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { MetricCard } from "@/components/ecosystem/MetricCard";
 import { Icons } from "@/components/shared/Icons";
+import { Skel } from "@/components/shared/Skel";
 import { TokenIcon } from "@/components/shared/TokenIcon";
 import {
   AMM_LABEL,
@@ -32,6 +33,36 @@ function Change({ n }: { n?: number | null }) {
   );
 }
 
+function RowSkel() {
+  return (
+    <tr className="border-t border-ink-100">
+      <td className="w-8 py-2.5 pl-3 pr-0">
+        <Skel className="h-3.5 w-4" />
+      </td>
+      <td className="py-2.5 pl-2 pr-3">
+        <div className="flex items-center gap-2.5">
+          <Skel className="h-7 w-7 shrink-0 rounded-full" />
+          <div className="space-y-1">
+            <Skel className="h-3.5 w-24" />
+            <Skel className="h-3 w-10" />
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-2.5">
+        <Skel className="h-3.5 w-16" />
+      </td>
+      <td className="px-3 py-2.5">
+        <Skel className="h-3.5 w-14" />
+      </td>
+      {Array.from({ length: 7 }, (_, i) => (
+        <td key={i} className="px-3 py-2.5">
+          <Skel className="ml-auto h-3.5 w-12" />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
 function asRow(r: TokenFeedRow): TokenRow {
   return {
     ...r,
@@ -55,6 +86,7 @@ export function TokensPage() {
   });
 
   const rows = Array.isArray(data) ? data : [];
+  const boot = loading && !rows.length;
 
   const filtered = useMemo(() => {
     const metaF = TOKEN_FILTERS.find((f) => f.id === filter);
@@ -91,13 +123,6 @@ export function TokensPage() {
     return { holders, transfers, mcap, vol, active, count: rows.length, topSymbol: top?.symbol };
   }, [rows]);
 
-  if (loading && !rows.length) {
-    return <div className="text-sm text-ink-400">Loading…</div>;
-  }
-  if (error && !rows.length) {
-    return <div className="text-sm text-ink-400">{error}</div>;
-  }
-
   return (
     <div className="space-y-2.5">
       <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-0.5">
@@ -123,12 +148,13 @@ export function TokensPage() {
       </div>
 
       <div className="metric-grid xl:grid-cols-7">
-        <Link to={paths.tokensMarketCap} className="block transition hover:opacity-90">
+        <Link to={paths.tokensMarketCap} className="block hover:opacity-90">
           <MetricCard
             label="Tracked Market Cap"
             value={stats.mcap > 0 ? usd(stats.mcap) : "—"}
             icon={<Icons.Tvl size={13} />}
             color="#2563eb"
+            loading={boot}
           />
         </Link>
         <MetricCard
@@ -136,36 +162,42 @@ export function TokensPage() {
           value={stats.vol > 0 ? usd(stats.vol) : "—"}
           icon={<Icons.Volume size={13} />}
           color="#0ea5e9"
+          loading={boot}
         />
         <MetricCard
           label="Total Transfers"
           value={compact(stats.transfers)}
           icon={<Icons.Activity size={13} />}
           color="#8b5cf6"
+          loading={boot}
         />
         <MetricCard
           label="Tracked Tokens"
           value={compact(stats.count)}
           icon={<Icons.Tokens size={13} />}
           color="#06b6d4"
+          loading={boot}
         />
         <MetricCard
           label="Active Tokens"
           value={compact(stats.active)}
           icon={<Icons.DeFi size={13} />}
           color="#10b981"
+          loading={boot}
         />
         <MetricCard
           label="Holders"
           value={compact(stats.holders)}
           icon={<Icons.Users size={13} />}
           color="#f59e0b"
+          loading={boot}
         />
         <MetricCard
           label="Top Interest"
           value={stats.topSymbol ?? "—"}
           icon={<Icons.Layers size={13} />}
           color="#f43f5e"
+          loading={boot}
         />
       </div>
 
@@ -224,7 +256,9 @@ export function TokensPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r, i) => (
+              {boot
+                ? Array.from({ length: 8 }, (_, i) => <RowSkel key={i} />)
+                : filtered.map((r, i) => (
                 <tr key={r.address} className="border-t border-ink-100 hover:bg-ink-50/50">
                   <td className="w-8 py-2.5 pl-3 pr-0 align-middle text-[13px] text-ink-400">
                     {i + 1}
@@ -277,10 +311,10 @@ export function TokensPage() {
                   </td>
                 </tr>
               ))}
-              {!filtered.length && (
+              {!boot && !filtered.length && (
                 <tr>
                   <td colSpan={11} className="px-3 py-10 text-center text-ink-400">
-                    No tokens found.
+                    {error ?? "No tokens found."}
                   </td>
                 </tr>
               )}
