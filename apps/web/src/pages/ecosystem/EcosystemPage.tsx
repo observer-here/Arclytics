@@ -4,6 +4,7 @@ import { Icons } from "@/components/shared/Icons";
 import { MetricCard } from "@/components/ecosystem/MetricCard";
 import { PageNav } from "@/components/shared/PageNav";
 import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
+import { Skel } from "@/components/shared/Skel";
 import {
   CATEGORY_PILL,
   ECOSYSTEM_FILTERS,
@@ -28,6 +29,34 @@ type Row = {
   age?: string;
   spark7d?: number[];
 };
+
+function RowSkel() {
+  return (
+    <tr className="border-t border-ink-100">
+      <td className="w-7 py-3 pl-2 pr-0">
+        <Skel className="h-3.5 w-4" />
+      </td>
+      <td className="py-3 pl-1.5 pr-3">
+        <div className="flex items-center gap-2">
+          <Skel className="h-8 w-8 shrink-0 rounded-full" />
+          <Skel className="h-3.5 w-24" />
+        </div>
+      </td>
+      <td className="px-3 py-3">
+        <Skel className="h-5 w-16 rounded-full" />
+      </td>
+      {Array.from({ length: 8 }, (_, i) => (
+        <td key={i} className="px-3 py-3">
+          <Skel className="ml-auto h-3.5 w-12" />
+        </td>
+      ))}
+      <td className="px-3 py-3">
+        <Skel className="h-3.5 w-[72px]" />
+      </td>
+      <td className="px-2 py-3" />
+    </tr>
+  );
+}
 
 const PAGE_SIZE = 20;
 
@@ -68,6 +97,7 @@ export function EcosystemPage() {
   const [sortBy, setSortBy] = useState<"tvl" | "change">("tvl");
   const [page, setPage] = useState(1);
 
+  const boot = loading && !data;
   const rows: Row[] = data?.rows ?? [];
   const spark = data?.spark ?? [];
   const stats = data?.stats;
@@ -88,9 +118,6 @@ export function EcosystemPage() {
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageRows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  if (loading) return <div className="text-sm text-ink-400">Loading…</div>;
-  if (error) return <div className="text-sm text-ink-400">{error}</div>;
 
   return (
     <div className="space-y-2.5">
@@ -127,6 +154,8 @@ export function EcosystemPage() {
           icon={<Icons.Tvl size={13} />}
           series={spark}
           color="#2563eb"
+          loading={boot}
+          hasSpark
         />
         <MetricCard
           label="Total Protocols"
@@ -135,6 +164,8 @@ export function EcosystemPage() {
           icon={<Icons.Layers size={13} />}
           series={spark}
           color="#8b5cf6"
+          loading={boot}
+          hasSpark
         />
         <MetricCard
           label="Total 24h Volume"
@@ -143,6 +174,8 @@ export function EcosystemPage() {
           icon={<Icons.Volume size={13} />}
           series={spark}
           color="#06b6d4"
+          loading={boot}
+          hasSpark
         />
         <MetricCard
           label="Total 24h Fees"
@@ -151,6 +184,8 @@ export function EcosystemPage() {
           icon={<Icons.Fees size={13} />}
           series={spark}
           color="#f59e0b"
+          loading={boot}
+          hasSpark
         />
         <MetricCard
           label="New Addresses (24h)"
@@ -159,6 +194,8 @@ export function EcosystemPage() {
           icon={<Icons.Users size={13} />}
           series={spark}
           color="#10b981"
+          loading={boot}
+          hasSpark
         />
         <MetricCard
           label="Stablecoins Market Cap"
@@ -167,6 +204,8 @@ export function EcosystemPage() {
           icon={<Icons.Stablecoins size={13} />}
           series={spark}
           color="#6366f1"
+          loading={boot}
+          hasSpark
         />
       </div>
 
@@ -218,7 +257,9 @@ export function EcosystemPage() {
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((r, i) => {
+              {boot
+                ? Array.from({ length: 8 }, (_, i) => <RowSkel key={i} />)
+                : pageRows.map((r, i) => {
                 const rank = (page - 1) * PAGE_SIZE + i + 1;
                 return (
                   <tr key={r.slug} className="border-t border-ink-100 hover:bg-ink-50">
@@ -273,10 +314,10 @@ export function EcosystemPage() {
                   </tr>
                 );
               })}
-              {!pageRows.length && (
+              {!boot && !pageRows.length && (
                 <tr>
                   <td colSpan={13} className="px-4 py-10 text-center text-ink-400">
-                    No protocols in this category yet.
+                    {error ?? "No protocols in this category yet."}
                   </td>
                 </tr>
               )}
