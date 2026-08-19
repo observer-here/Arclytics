@@ -2,6 +2,7 @@ import { BrowserRouter } from "react-router-dom";
 import { useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useAsyncData } from "@/hooks/useAsyncData";
+import { ensureLiveFeed } from "@/libs/arcRpc";
 import { loadNetworkMeta, prefetchCore } from "@/libs/prefetch";
 import { AppRoutes } from "@/routes";
 
@@ -10,6 +11,7 @@ export default function App() {
 
   useEffect(() => {
     prefetchCore();
+    ensureLiveFeed();
   }, []);
 
   return (

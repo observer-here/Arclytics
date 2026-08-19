@@ -7,7 +7,12 @@ import { num, shortHash } from "@/utils/format";
 import { Skel } from "@/components/shared/Skel";
 
 export function RecentBlocks() {
-  const { blocks, live, freshBlock } = useSyncExternalStore(subscribeLiveFeed, peekLiveFeed, peekLiveFeed);
+  const { blocks, connected, freshBlock } = useSyncExternalStore(
+    subscribeLiveFeed,
+    peekLiveFeed,
+    peekLiveFeed,
+  );
+  const connecting = !connected && !blocks.length;
 
   return (
     <div className="card p-2.5">
@@ -16,13 +21,13 @@ export function RecentBlocks() {
           <div className="panel-title">Latest Blocks</div>
           <span
             className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium ${
-              live ? "bg-emerald-50 text-emerald-600" : "bg-ink-100 text-ink-400"
+              connected ? "bg-emerald-50 text-emerald-600" : "bg-ink-100 text-ink-400"
             }`}
           >
             <span
-              className={`h-1.5 w-1.5 rounded-full ${live ? "animate-pulse bg-emerald-500" : "bg-ink-300"}`}
+              className={`h-1.5 w-1.5 animate-pulse rounded-full ${connected ? "bg-emerald-500" : "bg-ink-300"}`}
             />
-            {live ? "Live" : "Connecting…"}
+            {connected ? "Live" : "Connecting…"}
           </span>
         </div>
         <Link to={paths.blocks} className="text-[11px] font-medium text-arc-600">
@@ -54,7 +59,7 @@ export function RecentBlocks() {
               </td>
             </tr>
           ))}
-          {!blocks.length &&
+          {connecting &&
             Array.from({ length: 8 }, (_, i) => (
               <tr key={i} className="border-t border-ink-100">
                 <td className="py-1.5" colSpan={4}>

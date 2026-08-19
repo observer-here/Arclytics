@@ -13,6 +13,9 @@ export type Paged<T> = {
   nextPageParams: PageParams;
 };
 
+/** ArcScan default list page size (transactions, blocks, etc.). */
+export const ARCSCAN_PAGE_SIZE = 50;
+
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     cache: "no-store",

@@ -91,25 +91,38 @@ export async function fetchLatestRpcBlocks(limit = 12): Promise<LiveBlock[]> {
   return blocks.filter(Boolean).map(mapBlock);
 }
 
+export async function fetchLatestRpcTxs(limit = 12): Promise<LiveTx[]> {
+  const blocks = await fetchLatestRpcBlocks(6);
+  const out: LiveTx[] = [];
+  for (const b of blocks) {
+    for (const tx of b.txs) {
+      out.push(tx);
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}
+
 const LIVE_N = 12;
 
 type LiveSnap = {
   txs: LiveTx[];
   blocks: LiveBlock[];
-  live: boolean;
+  connected: boolean;
   freshTx: Set<string>;
   freshBlock: Set<number>;
 };
 
-let liveSnap: LiveSnap = {
+let snap: LiveSnap = {
   txs: [],
   blocks: [],
-  live: false,
+  connected: false,
   freshTx: new Set(),
   freshBlock: new Set(),
 };
-const liveListeners = new Set<() => void>();
-let liveStarted = false;
+const listeners = new Set<() => void>();
+let started = false;
+let pollTimer = 0;
 const seenTx = new Set<string>();
 const seenBlock = new Set<number>();
 let txFreshT = 0;
@@ -126,13 +139,27 @@ function txsFrom(blocks: LiveBlock[], limit = LIVE_N) {
   return out;
 }
 
-function emitLive() {
-  for (const fn of liveListeners) fn();
+function emit() {
+  for (const fn of listeners) fn();
 }
 
-function patchLive(p: Partial<LiveSnap>) {
-  liveSnap = { ...liveSnap, ...p };
-  emitLive();
+function patch(p: Partial<LiveSnap>) {
+  snap = { ...snap, ...p };
+  emit();
+}
+
+function flashTx(hashes: string[]) {
+  if (!hashes.length) return;
+  patch({ freshTx: new Set(hashes) });
+  window.clearTimeout(txFreshT);
+  txFreshT = window.setTimeout(() => patch({ freshTx: new Set() }), 900);
+}
+
+function flashBlock(nums: number[]) {
+  if (!nums.length) return;
+  patch({ freshBlock: new Set(nums) });
+  window.clearTimeout(blockFreshT);
+  blockFreshT = window.setTimeout(() => patch({ freshBlock: new Set() }), 900);
 }
 
 function applyBlocks(blocks: LiveBlock[], highlight: boolean) {
@@ -141,56 +168,60 @@ function applyBlocks(blocks: LiveBlock[], highlight: boolean) {
   const novelT = txs.filter((t) => !seenTx.has(t.hash)).map((t) => t.hash);
   for (const b of blocks) seenBlock.add(b.number);
   for (const t of txs) seenTx.add(t.hash);
-  const next: Partial<LiveSnap> = { blocks: blocks.slice(0, LIVE_N), txs, live: true };
-  if (highlight && novelB.length) {
-    next.freshBlock = new Set(novelB);
-    window.clearTimeout(blockFreshT);
-    blockFreshT = window.setTimeout(() => patchLive({ freshBlock: new Set() }), 900);
-  }
-  if (highlight && novelT.length) {
-    next.freshTx = new Set(novelT);
-    window.clearTimeout(txFreshT);
-    txFreshT = window.setTimeout(() => patchLive({ freshTx: new Set() }), 900);
-  }
-  patchLive(next);
+  patch({ blocks: blocks.slice(0, LIVE_N), txs, connected: true });
+  if (highlight && novelB.length) flashBlock(novelB);
+  if (highlight && novelT.length) flashTx(novelT);
 }
 
-function ensureLiveFeed() {
-  if (liveStarted) return;
-  liveStarted = true;
+function onWsStatus(up: boolean) {
+  if (up) {
+    if (snap.txs.length || snap.blocks.length) patch({ connected: true });
+    return;
+  }
+  patch({ connected: false });
+}
+
+function poll() {
+  void fetchLatestRpcBlocks(LIVE_N)
+    .then((blocks) => applyBlocks(blocks, true))
+    .catch(() => {
+      if (!snap.txs.length && !snap.blocks.length) patch({ connected: false });
+    });
+}
+
+export function ensureLiveFeed() {
+  if (started) return;
+  started = true;
 
   void fetchLatestRpcBlocks(LIVE_N)
     .then((blocks) => applyBlocks(blocks, false))
-    .catch(() => patchLive({ live: false }));
+    .catch(() => patch({ connected: false }));
 
-  subscribeRpcBlocks((block) => {
-    if (seenBlock.has(block.number)) {
-      if (!liveSnap.live) patchLive({ live: true });
-      return;
-    }
-    applyBlocks([block, ...liveSnap.blocks], true);
-  });
+  subscribeRpcBlocks(
+    (block) => {
+      if (seenBlock.has(block.number)) return;
+      applyBlocks([block, ...snap.blocks], true);
+    },
+    onWsStatus,
+  );
 
-  window.setInterval(() => {
-    void fetchLatestRpcBlocks(LIVE_N)
-      .then((blocks) => applyBlocks(blocks, true))
-      .catch(() => undefined);
-  }, 5_000);
+  pollTimer = window.setInterval(poll, 5_000);
 }
 
 export function peekLiveFeed() {
-  return liveSnap;
+  return snap;
 }
 
 export function subscribeLiveFeed(fn: () => void) {
-  liveListeners.add(fn);
+  listeners.add(fn);
   ensureLiveFeed();
-  return () => {
-    liveListeners.delete(fn);
-  };
+  return () => listeners.delete(fn);
 }
 
-export function subscribeRpcBlocks(onBlock: (block: LiveBlock) => void): () => void {
+export function subscribeRpcBlocks(
+  onBlock: (block: LiveBlock) => void,
+  onStatus?: (connected: boolean) => void,
+): () => void {
   const WS = import.meta.env.VITE_ARC_WS_URL ?? "wss://rpc.testnet.arc.network";
   let ws: WebSocket | null = null;
   let closed = false;
@@ -218,6 +249,7 @@ export function subscribeRpcBlocks(onBlock: (block: LiveBlock) => void): () => v
 
     ws.onopen = () => {
       retry = 0;
+      onStatus?.(true);
       ws?.send(
         JSON.stringify({
           jsonrpc: "2.0",
@@ -238,6 +270,7 @@ export function subscribeRpcBlocks(onBlock: (block: LiveBlock) => void): () => v
         };
         if (msg.id === 1 && typeof msg.result === "string") {
           subId = msg.result;
+          onStatus?.(true);
           return;
         }
         if (msg.method === "eth_subscription" && msg.params?.result?.number) {
@@ -253,6 +286,7 @@ export function subscribeRpcBlocks(onBlock: (block: LiveBlock) => void): () => v
 
     ws.onclose = () => {
       if (closed) return;
+      onStatus?.(false);
       const wait = Math.min(8_000, 400 * 2 ** retry++);
       reconnect = window.setTimeout(connect, wait);
     };

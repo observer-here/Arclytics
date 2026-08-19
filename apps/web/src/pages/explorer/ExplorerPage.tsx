@@ -5,9 +5,39 @@ import { PageNav } from "@/components/shared/PageNav";
 import { TimeAgo } from "@/components/shared/TimeAgo";
 import { explorerUrl } from "@/config/network";
 import { usePagedList } from "@/hooks/usePagedList";
-import { arcscan, type PageParams } from "@/libs/arcscan";
+import { arcscan, ARCSCAN_PAGE_SIZE, type PageParams } from "@/libs/arcscan";
 import { paths } from "@/routes/paths";
 import { feeUsdc, shortHash } from "@/utils/format";
+import { Skel, PageNavSkel } from "@/components/shared/Skel";
+
+function TxRowSkel() {
+  return (
+    <tr className="border-b border-ink-50">
+      <td className="px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <Skel className="h-1.5 w-1.5 shrink-0 rounded-full" />
+          <Skel className="h-5 w-5 shrink-0 rounded" />
+          <Skel className="h-3.5 w-28" />
+        </div>
+      </td>
+      <td className="px-3 py-2">
+        <Skel className="h-5 w-16 rounded-full" />
+      </td>
+      <td className="px-3 py-2">
+        <div className="flex items-center gap-1.5">
+          <Skel className="h-5 w-5 shrink-0 rounded" />
+          <Skel className="h-3.5 w-20" />
+        </div>
+      </td>
+      <td className="px-3 py-2">
+        <Skel className="ml-auto h-3.5 w-14" />
+      </td>
+      <td className="px-3 py-2">
+        <Skel className="ml-auto h-3.5 w-10" />
+      </td>
+    </tr>
+  );
+}
 
 function methodTone(method: string) {
   const m = method.toLowerCase();
@@ -37,9 +67,8 @@ export function ExplorerPage() {
   const { items, loading, error, page, hasPrev, hasNext, prevPage, nextPage } =
     usePagedList("explorer-txs", loader);
 
-  if (loading && !items.length) {
-    return <div className="text-sm text-ink-400">Loading explorer…</div>;
-  }
+  const boot = loading && !items.length;
+
   if (error && !items.length) {
     return <div className="text-sm text-ink-400">{error}</div>;
   }
@@ -52,10 +81,14 @@ export function ExplorerPage() {
             <Icons.Tx size={13} className="text-arc-600" />
             Latest transactions
           </div>
-          <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-            Live
-          </span>
+          {boot ? (
+            <Skel className="h-5 w-12 rounded-md" />
+          ) : (
+            <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              Live
+            </span>
+          )}
         </div>
 
         <div className="overflow-x-auto">
@@ -70,7 +103,9 @@ export function ExplorerPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((tx) => {
+              {boot
+                ? Array.from({ length: ARCSCAN_PAGE_SIZE }, (_, i) => <TxRowSkel key={i} />)
+                : items.map((tx) => {
                 const hash = String(tx.hash);
                 const method = String(tx.method ?? "transfer");
                 const from = String((tx.from as { hash?: string } | undefined)?.hash ?? "");
@@ -133,7 +168,7 @@ export function ExplorerPage() {
                   </tr>
                 );
               })}
-              {!items.length && (
+              {!boot && !items.length && (
                 <tr>
                   <td colSpan={5} className="px-3 py-10 text-center text-ink-400">
                     No transactions yet.
@@ -145,15 +180,19 @@ export function ExplorerPage() {
         </div>
       </div>
 
-      <PageNav
-        page={page}
-        hasPrev={hasPrev}
-        hasNext={hasNext}
-        loading={loading}
-        onPrev={prevPage}
-        onNext={nextPage}
-        pageSize={items.length}
-      />
+      {boot ? (
+        <PageNavSkel />
+      ) : (
+        <PageNav
+          page={page}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          loading={loading}
+          onPrev={prevPage}
+          onNext={nextPage}
+          pageSize={items.length}
+        />
+      )}
     </div>
   );
 }

@@ -52,6 +52,16 @@ export function ChartSkel({
   );
 }
 
+export function PageNavSkel() {
+  return (
+    <div className="flex items-center justify-center gap-3 px-1 pt-2">
+      <Skel className="h-8 w-[4.5rem] rounded-md" />
+      <Skel className="h-4 w-28" />
+      <Skel className="h-8 w-16 rounded-md" />
+    </div>
+  );
+}
+
 export function TableSkel({ title, rows = 8 }: { title: string; rows?: number }) {
   return (
     <div className="card p-2.5">
