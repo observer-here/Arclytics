@@ -1,5 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useState } from "react";
+import { GlobalSearch } from "@/components/search/GlobalSearch";
 import { Icons } from "@/components/shared/Icons";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
@@ -7,8 +8,6 @@ import { loginWithMagic } from "@/libs/auth";
 import { paths } from "@/routes/paths";
 
 export function Topbar({ onMenu }: { onMenu?: () => void }) {
-  const navigate = useNavigate();
-  const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const user = useAuth();
   const { dark, setTheme } = useTheme();
@@ -40,33 +39,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
         <img src="/logo.png" alt="Arclytics" className="h-7 w-7 rounded-lg object-contain" />
       </Link>
 
-      <form
-        className="relative min-w-0 flex-1"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const query = q.trim();
-          if (!query) return;
-          if (/^0x[a-fA-F0-9]{40}$/.test(query)) {
-            navigate(`/address/${query.toLowerCase()}`);
-            return;
-          }
-          navigate(`${paths.search}?q=${encodeURIComponent(query)}`);
-        }}
-      >
-        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-400">
-          <Icons.Search size={14} />
-        </span>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Search protocols, tokens, addresses..."
-          autoComplete="off"
-          className="w-full rounded-lg border border-ink-200 bg-ink-50 py-1.5 pl-8 pr-10 text-[13px] text-ink-800 outline-none ring-arc-500 placeholder:text-ink-400 focus:bg-white focus:ring-1"
-        />
-        <kbd className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-ink-200 bg-white px-1 py-0.5 text-[9px] text-ink-400 sm:inline">
-          ⌘K
-        </kbd>
-      </form>
+      <GlobalSearch />
 
       <div className="flex shrink-0 items-center gap-1.5">
         <button

@@ -36,6 +36,21 @@
   button {
     @apply cursor-pointer;
   }
+
+  .magic-iframe {
+    color-scheme: light;
+  }
+
+  html.dark body.magic-login::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 2147483646;
+    background: rgb(11 14 20 / 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    pointer-events: none;
+  }
 }
 
 @layer components {
