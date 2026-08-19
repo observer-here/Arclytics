@@ -245,11 +245,22 @@ export function GlobalSearch() {
         aria-controls="global-search-results"
         aria-autocomplete="list"
         aria-activedescendant={open && flat[activeIdx] ? `gs-option-${activeIdx}` : undefined}
-        className="w-full rounded-lg border border-ink-200 bg-ink-50 py-1.5 pl-8 pr-3 text-[13px] text-ink-800 outline-none ring-arc-500 placeholder:text-ink-400 focus:bg-white focus:ring-1 sm:pr-14"
+        className="w-full rounded-lg border border-ink-200 bg-ink-50 py-1.5 pl-8 pr-8 text-[13px] text-ink-800 outline-none ring-arc-500 placeholder:text-ink-400 focus:bg-white focus:ring-1 sm:pr-14"
       />
-      <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-ink-200 bg-white px-1 py-0.5 text-[9px] text-ink-400 sm:inline">
-        {isMac ? "⌘K" : "Ctrl K"}
-      </kbd>
+      {q ? (
+        <button
+          type="button"
+          aria-label="Clear search"
+          onClick={() => { setQ(""); setOpen(false); inputRef.current?.focus(); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-600 sm:right-2"
+        >
+          <Icons.X size={13} />
+        </button>
+      ) : (
+        <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-ink-200 bg-white px-1 py-0.5 text-[9px] text-ink-400 sm:inline">
+          {isMac ? "⌘K" : "Ctrl K"}
+        </kbd>
+      )}
 
       {open &&
         box &&
