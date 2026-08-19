@@ -243,7 +243,7 @@ export function ProtocolDetailPage() {
       </div>
 
       {data.paymentStats ? (
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Kpi
             label="Lifetime Calls"
             value={compact(data.paymentStats.lifetimeCalls)}
@@ -270,7 +270,7 @@ export function ProtocolDetailPage() {
           />
         </div>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           <Kpi label="TVL" value={usd(data.tvlUsd)} change={data.change24h} series={data.tvlSpark} color="#3b82f6" />
           <Kpi label="24h Volume" value={usd(data.volume24h)} change={data.changeVol} series={data.volSpark} color="#8b5cf6" />
           <Kpi label="24h Fees" value={usd(data.fees24h)} change={data.changeFees} series={data.feeSpark} color="#f97316" />

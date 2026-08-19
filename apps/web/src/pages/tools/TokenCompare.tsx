@@ -554,16 +554,16 @@ export function TokenCompare() {
   return (
     <div className="space-y-2">
       {/* Selection */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         {items.map((t, i) => (
-          <div key={t.address} className="flex min-w-0 flex-1 items-center gap-2">
+          <div key={t.address} className="flex min-w-0 items-center gap-2 sm:flex-1">
             {i > 0 && (
-              <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-ink-200 bg-ink-50 text-[9px] font-bold text-ink-500">
+              <div className="hidden h-7 w-7 shrink-0 place-items-center rounded-full border border-ink-200 bg-ink-50 text-[9px] font-bold text-ink-500 sm:grid">
                 VS
               </div>
             )}
             <div
-              className="flex min-w-[120px] flex-1 items-center gap-2 rounded-xl border bg-white px-2.5 py-2"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border bg-white px-2.5 py-2"
               style={{ borderColor: `${COLORS[i % COLORS.length]}66` }}
             >
               <TokenIcon address={t.address} src={t.iconUrl} symbol={t.symbol} size={22} />
@@ -582,7 +582,7 @@ export function TokenCompare() {
           </div>
         ))}
         {items.length < MAX && (
-          <div className="relative min-w-[120px] flex-1">
+          <div className="relative min-w-0 sm:min-w-[120px] sm:flex-1">
             <button
               type="button"
               onClick={() => setPickerOpen((o) => !o)}

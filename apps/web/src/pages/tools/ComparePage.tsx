@@ -638,16 +638,16 @@ export function ComparePage() {
         </div>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
             {items.map((p, i) => (
-              <div key={p.slug} className="flex min-w-0 flex-1 items-center gap-2">
+              <div key={p.slug} className="flex min-w-0 items-center gap-2 sm:flex-1">
                 {i > 0 && (
-                  <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-ink-200 bg-ink-50 text-[9px] font-bold text-ink-500">
+                  <div className="hidden h-7 w-7 shrink-0 place-items-center rounded-full border border-ink-200 bg-ink-50 text-[9px] font-bold text-ink-500 sm:grid">
                     VS
                   </div>
                 )}
                 <div
-                  className="flex min-w-[140px] flex-1 items-center gap-2 rounded-xl border bg-white px-2.5 py-2"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border bg-white px-2.5 py-2"
                   style={{ borderColor: `${COLORS[i % COLORS.length]}66` }}
                 >
                   <ProtocolIcon slug={p.slug} name={p.name} category={p.category} size={22} />
@@ -667,7 +667,7 @@ export function ComparePage() {
               </div>
             ))}
             {items.length < MAX && (
-              <div className="relative min-w-[140px] flex-1">
+              <div className="relative min-w-0 sm:min-w-[140px] sm:flex-1">
                 <button
                   type="button"
                   onClick={() => setPickerOpen((o) => !o)}

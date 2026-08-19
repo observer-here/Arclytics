@@ -6,7 +6,7 @@ const KEY = "arclytics.theme";
 export function readTheme(): Theme {
   try {
     const v = localStorage.getItem(KEY);
-    return v === "dark" || v === "system" ? v : "light";
+    return v === "dark" || v === "light" ? v : "system";
   } catch {
     return "light";
   }
