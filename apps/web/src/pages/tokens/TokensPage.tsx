@@ -209,7 +209,7 @@ export function TokensPage() {
         <div className="overflow-x-auto">
           <table className="w-full table-auto text-left text-[13px]">
             <thead>
-              <tr className="border-b border-ink-100 bg-ink-50/60">
+              <tr className="border-b border-ink-100 bg-ink-50">
                 <th className="w-8 py-2.5 pl-3 pr-0 text-[11px] font-medium text-ink-400">#</th>
                 <th className="py-2.5 pl-2 pr-3 text-[11px] font-medium text-ink-400">Token</th>
                 <th className="px-3 py-2.5 text-[11px] font-medium text-ink-400">Protocol</th>

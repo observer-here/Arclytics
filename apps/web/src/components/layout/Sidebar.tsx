@@ -67,7 +67,7 @@ export function Sidebar({
   const blockSecs = avgBlockTime ? avgBlockTime / 1000 : undefined;
 
   return (
-    <aside className="flex h-screen w-[180px] flex-col border-r border-ink-200 bg-white">
+    <aside className="flex h-screen w-[180px] flex-col border-r border-ink-200 bg-white dark:border-[var(--line)] dark:bg-[var(--surface-1)]">
       <Link to={paths.home} onClick={onNavigate} className="flex shrink-0 items-center gap-2 px-2.5 py-2.5">
         <img src="/logo.png" alt="Arclytics" className="h-8 w-8 rounded-lg object-contain" />
         <div className="min-w-0 leading-tight">
@@ -129,9 +129,6 @@ export function Sidebar({
           <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-ink-700" aria-label="GitHub">
             <Icons.Github size={14} />
           </a>
-          <button type="button" className="hover:text-ink-700" aria-label="Theme">
-            <Icons.Sun size={14} />
-          </button>
         </div>
       </div>
     </aside>

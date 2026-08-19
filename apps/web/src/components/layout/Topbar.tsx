@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Icons } from "@/components/shared/Icons";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { loginWithMagic } from "@/libs/auth";
 import { paths } from "@/routes/paths";
 
@@ -10,6 +11,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const user = useAuth();
+  const { dark, setTheme } = useTheme();
 
   async function login() {
     if (busy) return;
@@ -24,7 +26,7 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-ink-200 bg-white/95 px-3 backdrop-blur sm:px-4">
+    <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-ink-200 bg-white/95 px-3 backdrop-blur dark:border-[var(--line)] dark:bg-[var(--surface-1)] sm:px-4">
       <button
         type="button"
         onClick={onMenu}
@@ -77,10 +79,11 @@ export function Topbar({ onMenu }: { onMenu?: () => void }) {
         </button>
         <button
           type="button"
+          onClick={() => setTheme(dark ? "light" : "dark")}
           className="grid h-8 w-8 place-items-center rounded-lg border border-ink-200 text-ink-600 hover:bg-ink-50"
-          aria-label="Theme"
+          aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
         >
-          <Icons.Sun size={14} />
+          {dark ? <Icons.Sun size={14} /> : <Icons.Moon size={14} />}
         </button>
         {user ? (
           <Link

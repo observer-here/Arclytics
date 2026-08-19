@@ -175,7 +175,7 @@ function CompareLine({
             const y = padT + ih - t * ih;
             return (
               <g key={t}>
-                <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+                <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="var(--chart-grid)" strokeWidth="1" />
                 <text
                   x={padL - 4}
                   y={y + 3}
@@ -358,7 +358,7 @@ function MarketShareChart({
             const y = padT + ih - t * ih;
             return (
               <g key={t}>
-                <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+                <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="var(--chart-grid)" strokeWidth="1" />
                 <text
                   x={padL - 4}
                   y={y + 3}

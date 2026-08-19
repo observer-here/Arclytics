@@ -221,7 +221,7 @@ export function EcosystemPage() {
               {pageRows.map((r, i) => {
                 const rank = (page - 1) * PAGE_SIZE + i + 1;
                 return (
-                  <tr key={r.slug} className="border-t border-ink-100 hover:bg-ink-50/80">
+                  <tr key={r.slug} className="border-t border-ink-100 hover:bg-ink-50">
                     <td className="w-7 py-3 pl-2 pr-0 align-middle text-ink-400">{rank}</td>
                     <td className="py-3 pl-1.5 pr-3 align-middle">
                       <Link

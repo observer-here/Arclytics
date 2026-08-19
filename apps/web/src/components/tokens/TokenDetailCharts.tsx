@@ -125,7 +125,7 @@ export function TokenPriceChart({ data, color = "#8b5cf6" }: { data: Point[]; co
                     x2={w - pad}
                     y1={h - pad - t * (h - pad * 2)}
                     y2={h - pad - t * (h - pad * 2)}
-                    stroke="#e5e7eb"
+                    stroke="var(--chart-grid)"
                     strokeWidth="1"
                   />
                 ))}

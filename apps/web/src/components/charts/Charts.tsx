@@ -261,7 +261,7 @@ export function AreaChartCard({
                   x2={w - pad}
                   y1={h - pad - t * (h - pad * 2)}
                   y2={h - pad - t * (h - pad * 2)}
-                  stroke="#e5e7eb"
+                  stroke="var(--chart-grid)"
                   strokeWidth="1"
                 />
               ))}
@@ -394,7 +394,7 @@ export function MultiLineChart({
               x2={w - pad}
               y1={h - pad - t * (h - pad * 2)}
               y2={h - pad - t * (h - pad * 2)}
-              stroke="#e5e7eb"
+              stroke="var(--chart-grid)"
               strokeWidth="1"
             />
           ))}

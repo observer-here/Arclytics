@@ -112,7 +112,7 @@ function TxTable({ rows, self }: { rows: AddressTx[]; self: string }) {
                 ? `${tx.direction === "in" ? "+" : tx.direction === "out" ? "-" : ""}${tx.valueUsdc >= 1000 ? compact(tx.valueUsdc) : tx.valueUsdc.toFixed(tx.valueUsdc >= 1 ? 2 : 4)}`
                 : "—";
             return (
-              <tr key={tx.hash + tx.method} className="border-b border-ink-100 hover:bg-ink-50/70">
+              <tr key={tx.hash + tx.method} className="border-b border-ink-100 hover:bg-ink-50">
                 <td className="px-2.5 py-1.5">
                   <a
                     href={explorerUrl(`/tx/${tx.hash}`)}
@@ -419,7 +419,7 @@ export function AddressDetailPage() {
                     </thead>
                     <tbody>
                       {tokenRows.map((t) => (
-                        <tr key={t.address} className="border-b border-ink-100 hover:bg-ink-50/70">
+                        <tr key={t.address} className="border-b border-ink-100 hover:bg-ink-50">
                           <td className="px-2.5 py-1.5">
                             <Link
                               to={paths.token(t.address)}
@@ -472,7 +472,7 @@ export function AddressDetailPage() {
                   <Link
                     key={n.address}
                     to={paths.token(n.address)}
-                    className="flex items-center gap-2.5 px-3 py-2 hover:bg-ink-50/70"
+                    className="flex items-center gap-2.5 px-3 py-2 hover:bg-ink-50"
                   >
                     <TokenIcon
                       address={n.address}
@@ -594,7 +594,7 @@ export function AddressDetailPage() {
                   <Link
                     key={n.address}
                     to={paths.token(n.address)}
-                    className="flex items-center gap-2.5 px-3 py-2 hover:bg-ink-50/70"
+                    className="flex items-center gap-2.5 px-3 py-2 hover:bg-ink-50"
                   >
                     <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-md bg-ink-100">
                       <TokenIcon

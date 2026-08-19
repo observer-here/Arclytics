@@ -235,7 +235,7 @@ function ActivityLines({
           const y = padT + innerH - t * innerH;
           return (
             <g key={t}>
-              <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+              <line x1={padL} x2={w - padR} y1={y} y2={y} stroke="var(--chart-grid)" strokeWidth="1" />
               <text x={padL - 6} y={y + 3} textAnchor="end" className="fill-ink-400" fontSize="8">
                 {compact(max * t)}
               </text>
@@ -542,7 +542,7 @@ export function AnalyticsPage() {
                 {protocols.map((r, i) => {
                   const share = Math.min(100, (r.tvlUsd / totalTvl) * 100);
                   return (
-                    <tr key={r.slug} className="border-b border-ink-50 hover:bg-ink-50/60">
+                    <tr key={r.slug} className="border-b border-ink-50 hover:bg-ink-50">
                       <td className="px-2 py-1.5 text-ink-400">{i + 1}</td>
                       <td className="px-2 py-1.5">
                         <Link

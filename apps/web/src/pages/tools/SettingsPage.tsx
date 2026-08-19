@@ -34,10 +34,10 @@ function Row({
       {right}
     </>
   );
-  const cls = "flex w-full items-center gap-3 border-b border-ink-100 px-4 py-3";
+  const cls = "flex w-full items-center gap-3 border-b border-ink-200 px-4 py-3";
   if (onClick) {
     return (
-      <button type="button" onClick={onClick} className={`${cls} hover:bg-ink-50/80`}>
+      <button type="button" onClick={onClick} className={`${cls} hover:bg-ink-50`}>
         {inner}
       </button>
     );
@@ -48,7 +48,7 @@ function Row({
 function Head({ icon, title }: { icon: keyof typeof Icons; title: string }) {
   const Icon = Icons[icon];
   return (
-    <div className="flex items-center gap-2.5 border-b border-ink-100 px-4 py-3">
+    <div className="flex items-center gap-2.5 border-b border-ink-200 px-4 py-3">
       <span className="grid h-8 w-8 place-items-center rounded-lg bg-arc-50 text-arc-600">
         <Icon size={15} />
       </span>
@@ -146,7 +146,7 @@ function AccountCard() {
     <section className="overflow-hidden rounded-xl border border-ink-200 bg-white">
       <Head icon="Users" title="Account" />
       {editing ? (
-        <div className="flex items-center gap-2 border-b border-ink-100 px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-ink-200 px-4 py-3">
           <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-ink-50 text-ink-500">
             <Icons.Users size={14} />
           </span>
@@ -196,7 +196,7 @@ function AccountCard() {
               {copied === "wallet" ? (
                 <Icons.Verified size={13} className="text-emerald-600" />
               ) : (
-                <Icons.Copy size={13} className="text-ink-300" />
+                <Icons.Copy size={13} className="text-ink-400" />
               )}
             </span>
           ) : null
@@ -212,7 +212,7 @@ function AccountCard() {
           copied === "id" ? (
             <Icons.Verified size={13} className="text-emerald-600" />
           ) : (
-            <Icons.Copy size={13} className="text-ink-300" />
+            <Icons.Copy size={13} className="text-ink-400" />
           )
         }
       />
@@ -257,7 +257,7 @@ function AppearanceCard() {
               >
                 <Icon size={13} />
                 {t.label}
-                <span className={`h-1.5 w-1.5 rounded-full ${on ? "bg-arc-600" : "bg-ink-200"}`} />
+                <span className={`h-1.5 w-1.5 rounded-full ${on ? "bg-arc-600" : "bg-ink-300"}`} />
               </button>
             );
           })}
@@ -271,15 +271,15 @@ function AboutCard() {
   return (
     <section className="overflow-hidden rounded-xl border border-ink-200 bg-white">
       <Head icon="Info" title="About" />
-      <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3 text-[13px]">
+      <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3 text-[13px]">
         <span className="text-ink-400">Version</span>
         <span className="font-medium text-ink-800">v1.0.0</span>
       </div>
-      <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3 text-[13px]">
+      <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3 text-[13px]">
         <span className="text-ink-400">Build</span>
         <span className="font-medium text-ink-800">May 15, 2026</span>
       </div>
-      <p className="border-b border-ink-100 px-4 py-3 text-[13px] leading-relaxed text-ink-600">
+      <p className="border-b border-ink-200 px-4 py-3 text-[13px] leading-relaxed text-ink-600">
         Arclytics is an analytics layer for the Arc ecosystem.
       </p>
       <div className="flex items-center gap-2 px-4 py-3">

@@ -19,6 +19,7 @@
         var t = localStorage.getItem("arclytics.theme") || "light";
         var d = t === "dark" || (t === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
         if (d) document.documentElement.classList.add("dark");
+        else document.documentElement.classList.remove("dark");
       } catch (e) {}
     </script>
   </head>

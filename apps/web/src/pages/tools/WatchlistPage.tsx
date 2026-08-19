@@ -453,7 +453,7 @@ export function WatchlistPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-[13px]">
                 <thead>
-                  <tr className="border-b border-ink-100 bg-ink-50/60 text-[11px] font-medium text-ink-400">
+                  <tr className="border-b border-ink-100 bg-ink-50 text-[11px] font-medium text-ink-400">
                     <th className="px-3 py-2.5">Name</th>
                     <th className="px-3 py-2.5">Type</th>
                     <th className="px-3 py-2.5">List</th>
@@ -470,7 +470,7 @@ export function WatchlistPage() {
                       const key = `${r.kind}:${r.id}`;
                       const up = (r.change ?? 0) >= 0;
                       return (
-                        <tr key={key} className="border-t border-ink-100 hover:bg-ink-50/50">
+                        <tr key={key} className="border-t border-ink-100 hover:bg-ink-50">
                           <td className="px-3 py-2.5">
                             <Link to={r.href} className="hover:text-arc-700">
                               <RowName r={r} />

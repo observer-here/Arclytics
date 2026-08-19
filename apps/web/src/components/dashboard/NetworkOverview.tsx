@@ -23,7 +23,7 @@ export function NetworkOverview({
     <div className="card p-2.5">
       <div className="mb-1.5 panel-title">Network Overview</div>
       <div className="mb-2 grid place-items-center rounded-xl bg-gradient-to-br from-arc-50 to-indigo-50 p-3">
-        <div className="relative grid h-28 w-28 place-items-center rounded-full border-[3px] border-white bg-white shadow-card">
+        <div className="relative grid h-28 w-28 place-items-center rounded-full border-[3px] border-white bg-white shadow-card dark:border-[var(--surface-1)] dark:bg-[var(--surface-1)] dark:shadow-none">
           {catReady ? (
             <>
               <div className="text-center">

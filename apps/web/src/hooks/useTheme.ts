@@ -3,9 +3,13 @@ import { useEffect, useState } from "react";
 export type Theme = "light" | "dark" | "system";
 const KEY = "arclytics.theme";
 
-function read(): Theme {
-  const v = localStorage.getItem(KEY);
-  return v === "dark" || v === "system" ? v : "light";
+export function readTheme(): Theme {
+  try {
+    const v = localStorage.getItem(KEY);
+    return v === "dark" || v === "system" ? v : "light";
+  } catch {
+    return "light";
+  }
 }
 
 export function resolvedDark(theme: Theme) {
@@ -17,7 +21,7 @@ export function applyTheme(theme: Theme) {
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(read);
+  const [theme, setThemeState] = useState<Theme>(readTheme);
 
   useEffect(() => {
     applyTheme(theme);
