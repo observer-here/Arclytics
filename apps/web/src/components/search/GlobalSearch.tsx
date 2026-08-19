@@ -39,7 +39,7 @@ function measurePanel(input: HTMLInputElement | null): PanelBox | null {
   const rect = input?.getBoundingClientRect();
   if (!rect) return null;
   const vw = window.innerWidth;
-  const top = rect.bottom + 6;
+  const top = rect.bottom + 11;
   if (vw < MOBILE_WIDTH) return { left: GUTTER, top, width: vw - GUTTER * 2 };
   return {
     left: rect.left,
