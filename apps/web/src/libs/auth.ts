@@ -85,13 +85,21 @@ async function finishDid(didToken: string) {
 export async function loginWithMagic() {
   const client = getMagic();
   if (!client) throw new Error("Magic is not configured");
-  let did = "";
-  await client.wallet.connectWithUI().on("id-token-created", ({ idToken }) => {
-    did = idToken;
-  });
-  if (!did) did = (await client.user.getIdToken()) ?? "";
-  if (!did) throw new Error("Login cancelled");
-  return finishDid(did);
+  const isDark = document.documentElement.classList.contains("dark");
+  if (isDark) document.documentElement.style.colorScheme = "light";
+  document.body.classList.add("magic-login");
+  try {
+    let did = "";
+    await client.wallet.connectWithUI().on("id-token-created", ({ idToken }) => {
+      did = idToken;
+    });
+    if (!did) did = (await client.user.getIdToken()) ?? "";
+    if (!did) throw new Error("Login cancelled");
+    return finishDid(did);
+  } finally {
+    document.body.classList.remove("magic-login");
+    if (isDark) document.documentElement.style.colorScheme = "";
+  }
 }
 
 export async function refreshMe() {
