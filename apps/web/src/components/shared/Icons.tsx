@@ -470,6 +470,11 @@ export const Icons = {
       <path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7l7-4z" />
     </Svg>
   ),
+  Close: (p: IconProps) => (
+    <svg width={p.size ?? 16} height={p.size ?? 16} viewBox="0 0 24 24" fill="none" className={p.className} aria-hidden>
+      <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  ),
   Logo: (p: IconProps) => (
     <svg
       width={p.size ?? 16}

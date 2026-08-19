@@ -9,6 +9,7 @@ import { fetchCache, peekCache } from "@/libs/queryCache";
 import {
   TOKENS_CACHE_KEY,
   addressKeys,
+  clearRecents,
   groupItems,
   jumpItem,
   pushRecent,
@@ -22,10 +23,10 @@ import { paths } from "@/routes/paths";
 import { shortHash } from "@/utils/format";
 
 const REMOTE_DEBOUNCE_MS = 220;
-const isMac = typeof navigator !== "undefined" && /mac|iphone|ipad/i.test(navigator.userAgent);
 const MOBILE_WIDTH = 640;
 const PREFERRED_WIDTH = 960;
 const GUTTER = 12;
+
 
 function loadTokens() {
   return fetchCache(TOKENS_CACHE_KEY, async () => (await getTokens()).items ?? []);
@@ -64,18 +65,6 @@ export function GlobalSearch() {
     () => peekCache<TokenFeedRow[]>(TOKENS_CACHE_KEY) ?? [],
   );
 
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setOpen(true);
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -245,21 +234,18 @@ export function GlobalSearch() {
         aria-controls="global-search-results"
         aria-autocomplete="list"
         aria-activedescendant={open && flat[activeIdx] ? `gs-option-${activeIdx}` : undefined}
-        className="w-full rounded-lg border border-ink-200 bg-ink-50 py-1.5 pl-8 pr-8 text-[13px] text-ink-800 outline-none ring-arc-500 placeholder:text-ink-400 focus:bg-white focus:ring-1 sm:pr-14"
+        className="w-full rounded-lg border border-ink-200 bg-ink-50 py-1.5 pl-8 pr-8 text-[13px] text-ink-800 outline-none ring-arc-500 placeholder:text-ink-400 focus:bg-white focus:ring-1"
       />
-      {q ? (
+      {open && (
         <button
           type="button"
-          aria-label="Clear search"
-          onClick={() => { setQ(""); setOpen(false); inputRef.current?.focus(); }}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-600 sm:right-2"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => { setQ(""); setOpen(false); inputRef.current?.blur(); }}
+          className="absolute right-2 top-1/2 -translate-y-1/2 grid h-5 w-5 place-items-center rounded text-ink-400 hover:text-ink-700"
+          aria-label="Close search"
         >
-          <Icons.X size={13} />
+          <Icons.Close size={13} />
         </button>
-      ) : (
-        <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-ink-200 bg-white px-1 py-0.5 text-[9px] text-ink-400 sm:inline">
-          {isMac ? "⌘K" : "Ctrl K"}
-        </kbd>
       )}
 
       {open &&
@@ -290,8 +276,19 @@ export function GlobalSearch() {
                   }
                 >
                   {group.label && (
-                    <div className="px-3.5 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-ink-400">
-                      {group.label}
+                    <div className="flex items-center justify-between px-3.5 pb-1 pt-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-400">
+                        {group.label}
+                      </span>
+                      {group.label === "Recent" && (
+                        <button
+                          type="button"
+                          onClick={() => { clearRecents(); setRecents([]); }}
+                          className="text-[10px] text-ink-400 hover:text-ink-700"
+                        >
+                          Clear
+                        </button>
+                      )}
                     </div>
                   )}
                   {group.items.map((item, ii) => {

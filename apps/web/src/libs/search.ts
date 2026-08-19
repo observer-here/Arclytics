@@ -336,3 +336,11 @@ export function pushRecent(item: SearchItem) {
     /* storage unavailable */
   }
 }
+
+export function clearRecents() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
