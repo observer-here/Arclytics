@@ -6,6 +6,7 @@ export function PageNav({
   onPrev,
   onNext,
   pageSize,
+  totalPages,
 }: {
   page: number;
   hasPrev: boolean;
@@ -14,6 +15,7 @@ export function PageNav({
   onPrev: () => void;
   onNext: () => void;
   pageSize?: number;
+  totalPages?: number;
 }) {
   return (
     <div className="flex items-center justify-center gap-3 px-1 pt-2 text-[12px] text-ink-500">
@@ -27,6 +29,7 @@ export function PageNav({
       </button>
       <span className="min-w-[7rem] text-center">
         Page {page}
+        {totalPages ? ` of ${totalPages}` : ""}
         {pageSize ? ` · ${pageSize}` : ""}
       </span>
       <button

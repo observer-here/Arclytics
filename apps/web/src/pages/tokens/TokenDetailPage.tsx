@@ -59,11 +59,11 @@ function TableCard({
   viewAll?: string;
 }) {
   return (
-    <div className="table-wrap">
-      <div className="flex items-center justify-between border-b border-ink-100 px-2.5 py-2">
-        <span className="panel-title">{title}</span>
+    <div className="table-wrap min-w-0">
+      <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-2.5 py-2">
+        <span className="panel-title truncate">{title}</span>
         {viewAll && (
-          <a href={viewAll} target="_blank" rel="noreferrer" className="text-[11px] font-medium text-arc-600 hover:text-arc-700">
+          <a href={viewAll} target="_blank" rel="noreferrer" className="shrink-0 text-[11px] font-medium text-arc-600 hover:text-arc-700">
             View All
           </a>
         )}
@@ -73,12 +73,12 @@ function TableCard({
   );
 }
 
-const th = "px-3 py-2 text-left text-[11px] font-medium text-ink-400";
-const td = "border-t border-ink-100 px-3 py-2 text-[12px] text-ink-700";
+const th = "whitespace-nowrap px-3 py-2 text-left text-[11px] font-medium text-ink-400";
+const td = "whitespace-nowrap border-t border-ink-100 px-3 py-2 text-[12px] text-ink-700";
 
 function Val({ ready, children, w = "w-16" }: { ready: boolean; children: ReactNode; w?: string }) {
-  if (!ready) return <Skel className={`h-3 ${w}`} />;
-  return <span className="text-right font-medium text-ink-800">{children}</span>;
+  if (!ready) return <Skel className={`h-3 shrink-0 ${w}`} />;
+  return <span className="min-w-0 truncate text-right font-medium text-ink-800">{children}</span>;
 }
 
 export function TokenDetailPage() {
@@ -195,13 +195,13 @@ export function TokenDetailPage() {
 
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center gap-1.5 text-[11px] text-ink-400">
-        <Link to={paths.tokens} className="hover:text-arc-600">Tokens</Link>
-        <span>/</span>
+      <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-ink-400">
+        <Link to={paths.tokens} className="shrink-0 hover:text-arc-600">Tokens</Link>
+        <span className="shrink-0">/</span>
         {identityReady ? (
-          <span className="text-ink-700">{name} ({symbol})</span>
+          <span className="truncate text-ink-700">{name} ({symbol})</span>
         ) : (
-          <Skel className="h-3 w-32" />
+          <Skel className="h-3 w-32 shrink-0" />
         )}
       </div>
 
@@ -216,9 +216,9 @@ export function TokenDetailPage() {
             <div className="flex flex-wrap items-center gap-2">
               {identityReady ? (
                 <>
-                  <h1 className="text-xl font-semibold text-ink-900">{name}</h1>
+                  <h1 className="min-w-0 break-words text-xl font-semibold text-ink-900">{name}</h1>
                   <span className="text-[14px] font-medium text-ink-400">{symbol}</span>
-                  <Icons.Verified size={18} className="text-sky-500" />
+                  <Icons.Verified size={18} className="shrink-0 text-sky-500" />
                   <span className={`rounded-md border px-2 py-0.5 text-[10px] font-medium ${pill}`}>{category}</span>
                 </>
               ) : (
@@ -245,8 +245,8 @@ export function TokenDetailPage() {
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {tokenAddress ? (
                 <>
-                  <span className="font-mono text-[11px] text-ink-500">{shortHash(tokenAddress, 10, 8)}</span>
-                  <button type="button" onClick={copyAddr} className="rounded-md border border-ink-200 bg-white px-2 py-0.5 text-[10px] font-medium text-ink-500 hover:border-arc-400 hover:text-arc-700">
+                  <span className="break-all font-mono text-[11px] text-ink-500">{shortHash(tokenAddress, 10, 8)}</span>
+                  <button type="button" onClick={copyAddr} className="rounded-md border border-ink-200 bg-white px-2 py-0.5 text-[10px] font-medium text-ink-500 hover:border-arc-400 hover:text-arc-700 dark:border-[var(--line)] dark:bg-[var(--surface-1)] dark:text-ink-400">
                     {copied ? "Copied" : "Copy"}
                   </button>
                 </>
@@ -260,12 +260,12 @@ export function TokenDetailPage() {
           </div>
         </div>
 
-        <div className="flex shrink-0 gap-2">
-          <button type="button" onClick={toggleWatch} className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 hover:border-arc-400">
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={toggleWatch} className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 hover:border-arc-400 dark:border-[var(--line)] dark:bg-[var(--surface-1)] dark:text-ink-300">
             {watched ? <Icons.StarFilled size={14} className="text-amber-500" /> : <Icons.Star size={14} />}
             {watched ? "Watchlisted" : "Add to Watchlist"}
           </button>
-          <button type="button" onClick={share} className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 hover:border-arc-400">
+          <button type="button" onClick={share} className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-3 py-1.5 text-[12px] font-medium text-ink-700 hover:border-arc-400 dark:border-[var(--line)] dark:bg-[var(--surface-1)] dark:text-ink-300">
             <Icons.Share size={14} /> Share
           </button>
         </div>
@@ -287,7 +287,7 @@ export function TokenDetailPage() {
         ))}
       </div>
 
-      <div className="flex gap-0.5 overflow-x-auto border-b border-ink-200">
+      <div className="no-scrollbar flex gap-0.5 overflow-x-auto border-b border-ink-200">
         {TABS.map((t) => (
           <button
             key={t}
@@ -303,8 +303,8 @@ export function TokenDetailPage() {
       </div>
 
       {tab === "Overview" && (
-        <div className="grid gap-3 xl:grid-cols-5">
-          <div className="space-y-3 xl:col-span-3">
+        <div className="grid min-w-0 gap-3 xl:grid-cols-5">
+          <div className="min-w-0 space-y-3 xl:col-span-3">
             {chartsLoading ? (
               <div className="card flex min-h-[360px] flex-col overflow-hidden">
                 <div className="flex shrink-0 items-center justify-end border-b border-ink-100 px-3 py-2">
@@ -356,7 +356,7 @@ export function TokenDetailPage() {
             )}
 
             <TableCard title="Recent Transfers" viewAll={tokenAddress ? scan : undefined}>
-              <table className="w-full text-left">
+              <table className="w-full min-w-[560px] text-left">
                 <thead>
                   <tr>
                     <th className={th}>Tx Hash</th>
@@ -410,11 +410,11 @@ export function TokenDetailPage() {
             </TableCard>
           </div>
 
-          <div className="space-y-3 xl:col-span-2">
-            <PanelCard className="p-3">
+          <div className="min-w-0 space-y-3 xl:col-span-2">
+            <PanelCard className="min-w-0 p-3">
               <div className="panel-title mb-2">Token Overview</div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-0">
+                <div className="min-w-0 space-y-0">
                   <Row k="Token Name"><Val ready={identityReady} w="w-20">{name}</Val></Row>
                   <Row k="Symbol"><Val ready={identityReady} w="w-12">{symbol}</Val></Row>
                   <Row k="Decimals"><Val ready={!!supplyInfo} w="w-8">{supplyInfo?.decimals}</Val></Row>
@@ -427,18 +427,18 @@ export function TokenDetailPage() {
                   </Row>
                   <Row k="Blockchain"><span className="text-right font-medium text-ink-800">{chain.name}</span></Row>
                   <Row k="Standard"><span className="text-right font-medium text-ink-800">ERC-20</span></Row>
-                  <div className="flex justify-between gap-2 py-1.5 text-[11px]">
-                    <span className="text-ink-400">Contract</span>
+                  <div className="flex min-w-0 justify-between gap-2 py-1.5 text-[11px]">
+                    <span className="shrink-0 text-ink-400">Contract</span>
                     {tokenAddress ? (
-                      <a href={scan} target="_blank" rel="noreferrer" className="font-mono text-arc-700 hover:underline">
+                      <a href={scan} target="_blank" rel="noreferrer" className="min-w-0 truncate font-mono text-arc-700 hover:underline">
                         {shortHash(tokenAddress, 6, 4)}
                       </a>
                     ) : (
-                      <Skel className="h-3 w-20" />
+                      <Skel className="h-3 w-20 shrink-0" />
                     )}
                   </div>
                 </div>
-                <div className="space-y-0">
+                <div className="min-w-0 space-y-0">
                   <Row k="Market Cap Rank">
                     <Val ready={!!feed} w="w-10">{feed?.rank ? `#${feed.rank}` : "—"}</Val>
                   </Row>
@@ -473,7 +473,7 @@ export function TokenDetailPage() {
                 <div className="panel-title mb-2">Token Distribution</div>
                 <div className="flex items-center gap-4">
                   <Skel className="h-[120px] w-[120px] shrink-0 rounded-full" />
-                  <div className="flex-1 space-y-2">
+                  <div className="min-w-0 flex-1 space-y-2">
                     {Array.from({ length: 2 }, (_, i) => (
                       <div key={i} className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
@@ -494,7 +494,7 @@ export function TokenDetailPage() {
             )}
 
             <TableCard title="Top Holders" viewAll={tokenAddress ? scan : undefined}>
-              <table className="w-full text-left">
+              <table className="w-full min-w-[420px] text-left">
                 <thead>
                   <tr>
                     <th className={th}>#</th>
@@ -545,7 +545,7 @@ export function TokenDetailPage() {
             </TableCard>
 
             <TableCard title="Markets">
-              <table className="w-full text-left">
+              <table className="w-full min-w-[600px] text-left">
                 <thead>
                   <tr>
                     <th className={th}>#</th>
@@ -618,8 +618,8 @@ export function TokenDetailPage() {
 
 function Row({ k, children }: { k: string; children: ReactNode }) {
   return (
-    <div className="flex justify-between gap-2 border-b border-ink-100 py-1.5 text-[11px]">
-      <span className="text-ink-400">{k}</span>
+    <div className="flex min-w-0 justify-between gap-2 border-b border-ink-100 py-1.5 text-[11px]">
+      <span className="shrink-0 text-ink-400">{k}</span>
       {children}
     </div>
   );

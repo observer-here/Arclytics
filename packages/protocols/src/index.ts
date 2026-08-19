@@ -1,6 +1,7 @@
 import type { ProtocolConfig } from "@arclytics/types";
 import { aplp } from "./aplp";
 import { arclp } from "./arclp";
+import { arrowdex } from "./arrowdex";
 import { arcswap } from "./arcswap";
 import { arcvault } from "./arcvault";
 import { cctp } from "./cctp";
@@ -32,6 +33,7 @@ export const protocols: ProtocolConfig[] = [
   unitflow,
   lunex,
   flowswap,
+  arrowdex,
   gateway,
   arcvault,
   warpdex,
@@ -60,6 +62,7 @@ export * from "./arclp";
 export * from "./unitflow";
 export * from "./lunex";
 export * from "./flowswap";
+export * from "./arrowdex";
 export * from "./gateway";
 export * from "./arcvault";
 export * from "./warpdex";
@@ -81,6 +84,7 @@ export { details as arclpDetails } from "./arclp/details";
 export { details as unitflowDetails } from "./unitflow/details";
 export { details as lunexDetails } from "./lunex/details";
 export { details as flowswapDetails } from "./flowswap/details";
+export { details as arrowdexDetails } from "./arrowdex/details";
 export { details as gatewayDetails } from "./gateway/details";
 export { details as arcvaultDetails } from "./arcvault/details";
 export { details as warpdexDetails } from "./warpdex/details";

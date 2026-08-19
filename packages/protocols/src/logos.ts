@@ -16,6 +16,7 @@ export const PROTOCOL_LOGOS: Record<string, string> = {
   tower: "/protocols/tower.svg",
   settlenet: "/protocols/settlenet.ico",
   arcswap: "/protocols/arcswap.svg",
+  arrowdex: "/protocols/arrowdex.png",
   cctp: "/protocols/cctp.png",
 };
 

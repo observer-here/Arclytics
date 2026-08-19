@@ -29,7 +29,7 @@ type Row = {
   spark7d?: number[];
 };
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 20;
 
 function MiniSpark({ series, up }: { series: number[]; up?: boolean }) {
   if (!series.length) return <span className="text-ink-300">—</span>;
@@ -284,13 +284,10 @@ export function EcosystemPage() {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink-100 px-4 py-3 text-[13px] text-ink-500">
-          <span>
-            Showing {(page - 1) * PAGE_SIZE + (pageRows.length ? 1 : 0)} to{" "}
-            {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} protocols
-          </span>
+        <div className="border-t border-ink-100 px-4 pb-2">
           <PageNav
             page={page}
+            totalPages={pageCount}
             hasPrev={page > 1}
             hasNext={page < pageCount}
             onPrev={() => setPage((p) => Math.max(1, p - 1))}

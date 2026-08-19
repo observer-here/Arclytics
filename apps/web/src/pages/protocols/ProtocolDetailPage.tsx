@@ -308,7 +308,7 @@ export function ProtocolDetailPage() {
             <BarChartCard title="Volume" data={data.volSeries} color="#8b5cf6" />
             <div className="card p-2.5">
               <div className="panel-title mb-2">Overview</div>
-              <div className="divide-y divide-ink-100 dark:divide-[var(--line-soft)]">
+              <div className="divide-y divide-ink-100">
                 {overviewRows.map((r) => (
                   <div key={r.k} className="flex items-center justify-between gap-2 py-1.5 text-[12px]">
                     <span className="text-ink-400">{r.k}</span>
@@ -554,7 +554,7 @@ export function ProtocolDetailPage() {
           </div>
           <div className="card p-2.5">
             <div className="panel-title mb-2">Users</div>
-            <div className="divide-y divide-ink-100 dark:divide-[var(--line-soft)] text-[12px]">
+            <div className="divide-y divide-ink-100 text-[12px]">
               <div className="flex justify-between py-1.5">
                 <span className="text-ink-400">Active (24h)</span>
                 <span className="font-medium text-ink-800">{compact(data.activeUsers)}</span>

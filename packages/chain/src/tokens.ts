@@ -54,6 +54,7 @@ export const CURATED_TOKENS: CuratedToken[] = [
   { address: "0xCd4e6C8056608e7CA5b8cD126F32c56c43D92979", category: "DeFi", protocol: "Curve", amm: "curve-stableswap", fromReserves: true, blurb: "USDCEURC gauge deposit" },
   { address: "0x3a5964ce5cd8b09e55af9323a894e78bdd7f04bf", category: "DeFi", protocol: "Arc LP", amm: "stable-amm", fromReserves: true },
   { address: "0xb3685D16AAa06361ED28377b1319136650Fa9A13", category: "DeFi", protocol: "ArcSwap", amm: "uniswap-v2", fromReserves: true },
+  { address: "0x92318C8845283B9E8A33124Ef4EC520491F826F0", category: "DeFi", protocol: "Arrow DEX", amm: "uniswap-v2", fromReserves: true, blurb: "WUSDC/ARROW LP pool" },
   { address: "0xFA4Cc09c073742b7EA534E0B55B8d2BB3089668C", category: "DeFi", protocol: "Tower Exchange", amm: "uniswap-v2", fromReserves: true, blurb: "Tower USDC/EURC pair" },
   { address: "0x05efF4C5152178641b3e4A0Bf07D797D2ad9A68F", category: "DeFi", protocol: "Tower Exchange", amm: "uniswap-v2", fromReserves: true },
   { address: "0x22512C21A6A651D05D786Caf54Fdfee69205192c", category: "DeFi", protocol: "Tower Exchange", amm: "uniswap-v2", fromReserves: true },

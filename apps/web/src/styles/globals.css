@@ -199,6 +199,15 @@
     border-color: var(--line-soft);
   }
 
+  .dark .divide-ink-50 > :not([hidden]) ~ :not([hidden]),
+  .dark .divide-ink-100 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--line-soft);
+  }
+
+  .dark .divide-ink-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--line);
+  }
+
   .dark .border-ink-200,
   .dark .border-ink-300,
   .dark .border-white {

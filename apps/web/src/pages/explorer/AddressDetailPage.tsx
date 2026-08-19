@@ -233,19 +233,19 @@ export function AddressDetailPage() {
   return (
     <div className="space-y-2">
       {/* breadcrumb */}
-      <div className="flex items-center gap-1 text-[11px] text-ink-400">
-        <Link to={paths.home} className="hover:text-arc-700">
+      <div className="flex min-w-0 items-center gap-1 text-[11px] text-ink-400">
+        <Link to={paths.home} className="shrink-0 hover:text-arc-700">
           Home
         </Link>
-        <span>›</span>
-        <span>Address</span>
-        <span>›</span>
-        <span className="font-mono text-ink-600">{display}</span>
+        <span className="shrink-0">›</span>
+        <span className="shrink-0">Address</span>
+        <span className="shrink-0">›</span>
+        <span className="truncate font-mono text-ink-600">{display}</span>
       </div>
 
       {/* profile header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           <div
             className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-sm font-bold text-white shadow-sm"
             style={{ background: walletHue(data.address) }}
@@ -253,14 +253,14 @@ export function AddressDetailPage() {
             {data.address.slice(2, 4).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="font-mono text-[18px] font-semibold tracking-tight text-ink-900">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <h1 className="min-w-0 truncate font-mono text-[18px] font-semibold tracking-tight text-ink-900">
                 {title}
               </h1>
               <button
                 type="button"
                 onClick={copyAddr}
-                className="rounded p-1 text-ink-400 hover:bg-ink-100 hover:text-ink-700"
+                className="shrink-0 rounded p-1 text-ink-400 hover:bg-ink-100 hover:text-ink-700"
                 title="Copy address"
               >
                 {copied ? (
@@ -297,7 +297,7 @@ export function AddressDetailPage() {
         <button
           type="button"
           onClick={toggleWatch}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-ink-700 hover:border-violet-300"
+          className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-ink-200 bg-white px-2.5 py-1.5 text-[12px] font-medium text-ink-700 hover:border-violet-300 dark:border-[var(--line)] dark:bg-[var(--surface-1)] dark:text-ink-300"
         >
           {watched ? (
             <Icons.StarFilled size={13} className="text-amber-500" />
@@ -309,7 +309,7 @@ export function AddressDetailPage() {
       </div>
 
       {/* overview strip — single card row like mock */}
-      <div className="card grid grid-cols-2 divide-ink-100 sm:grid-cols-3 xl:grid-cols-6 xl:divide-x">
+      <div className="card grid grid-cols-2 divide-x divide-y divide-ink-100 overflow-hidden sm:grid-cols-3 xl:grid-cols-6">
         {[
           {
             label: "USDC Balance",
@@ -345,28 +345,28 @@ export function AddressDetailPage() {
             onClick: () => setTab("Transactions"),
           },
         ].map((cell) => (
-          <div key={cell.label} className="px-3 py-2.5">
-            <div className="text-[10px] font-medium text-ink-400">{cell.label}</div>
-            <div className="mt-0.5 text-[14px] font-semibold text-ink-900">{cell.value}</div>
+          <div key={cell.label} className="min-w-0 px-3 py-2.5">
+            <div className="truncate text-[10px] font-medium text-ink-400">{cell.label}</div>
+            <div className="mt-0.5 truncate text-[14px] font-semibold text-ink-900">{cell.value}</div>
             {cell.onClick ? (
               <button
                 type="button"
                 onClick={cell.onClick}
-                className="mt-0.5 text-[10px] font-medium text-arc-600 hover:underline"
+                className="mt-0.5 block max-w-full text-left text-[10px] font-medium text-arc-600 hover:underline"
               >
                 {cell.sub}
               </button>
             ) : (
-              <div className="mt-0.5 text-[10px] text-ink-400">{cell.sub}</div>
+              <div className="mt-0.5 truncate text-[10px] text-ink-400">{cell.sub}</div>
             )}
           </div>
         ))}
       </div>
 
       {/* main + sidebar */}
-      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_378px]">
-        <div className="space-y-2">
-          <div className="card overflow-hidden">
+      <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_378px]">
+        <div className="min-w-0 space-y-2">
+          <div className="card min-w-0 overflow-hidden">
             {/* underlined tabs */}
             <div className="no-scrollbar flex gap-0 overflow-x-auto border-b border-ink-200 px-2">
               {TABS.map((t) => (
@@ -497,13 +497,13 @@ export function AddressDetailPage() {
           </div>
 
           {/* bottom holdings — mock layout */}
-          <div className="grid gap-2 md:grid-cols-2">
-            <div className="card overflow-hidden">
+          <div className="grid min-w-0 gap-2 md:grid-cols-2">
+            <div className="card min-w-0 overflow-hidden">
               <div className="border-b border-ink-100 px-3 py-2">
                 <span className="text-[12px] font-semibold text-ink-800">Token Holdings</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-[11px]">
+                <table className="w-full min-w-[420px] text-left text-[11px]">
                   <thead>
                     <tr className="border-b border-ink-100 text-[10px] text-ink-400">
                       <th className="px-2.5 py-1.5 font-medium">Token</th>
@@ -576,20 +576,20 @@ export function AddressDetailPage() {
               </div>
             </div>
 
-            <div className="card overflow-hidden">
-              <div className="flex items-center justify-between border-b border-ink-100 px-3 py-2">
-                <span className="text-[12px] font-semibold text-ink-800">
+            <div className="card min-w-0 overflow-hidden">
+              <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-3 py-2">
+                <span className="truncate text-[12px] font-semibold text-ink-800">
                   NFT Holdings (Top {Math.min(4, data.nfts.length)})
                 </span>
                 <button
                   type="button"
                   onClick={() => setTab("ERC-721 / NFTs")}
-                  className="text-[10px] font-medium text-arc-600"
+                  className="shrink-0 text-[10px] font-medium text-arc-600"
                 >
                   View all
                 </button>
               </div>
-              <div className="divide-y divide-ink-50">
+              <div className="divide-y divide-ink-100">
                 {data.nfts.slice(0, 4).map((n) => (
                   <Link
                     key={n.address}
@@ -622,10 +622,10 @@ export function AddressDetailPage() {
         </div>
 
         {/* right sidebar */}
-        <aside className="space-y-3">
-          <div className="card p-3">
+        <aside className="min-w-0 space-y-3">
+          <div className="card min-w-0 p-3">
             <div className="text-[11px] font-semibold text-ink-700">Address Summary</div>
-            <div className="mt-1 text-[20px] font-semibold tracking-tight text-ink-900">
+            <div className="mt-1 truncate text-[20px] font-semibold tracking-tight text-ink-900">
               {usd(data.netWorth)}
             </div>
             {change24h ? (
@@ -698,29 +698,29 @@ export function AddressDetailPage() {
           <div className="card p-3 text-[11px]">
             <div className="mb-2 text-[11px] font-semibold text-ink-700">More Info</div>
             <dl className="space-y-1.5 text-ink-500">
-              <div className="flex justify-between gap-2">
-                <dt>Address Label</dt>
-                <dd className="font-medium text-ink-800">{data.name || data.ens || "—"}</dd>
+              <div className="flex min-w-0 justify-between gap-2">
+                <dt className="shrink-0">Address Label</dt>
+                <dd className="min-w-0 truncate font-medium text-ink-800">{data.name || data.ens || "—"}</dd>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt>Type</dt>
-                <dd className="font-medium text-ink-800">
+              <div className="flex min-w-0 justify-between gap-2">
+                <dt className="shrink-0">Type</dt>
+                <dd className="min-w-0 truncate font-medium text-ink-800">
                   {data.isContract ? "Contract" : "EOA"}
                 </dd>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt>Txns Count</dt>
-                <dd className="font-medium text-ink-800">{compact(data.txCount)}</dd>
+              <div className="flex min-w-0 justify-between gap-2">
+                <dt className="shrink-0">Txns Count</dt>
+                <dd className="min-w-0 truncate font-medium text-ink-800">{compact(data.txCount)}</dd>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt>Token Transfers</dt>
-                <dd className="font-medium text-ink-800">
+              <div className="flex min-w-0 justify-between gap-2">
+                <dt className="shrink-0">Token Transfers</dt>
+                <dd className="min-w-0 truncate font-medium text-ink-800">
                   {compact(data.tokenTransferCount)}
                 </dd>
               </div>
-              <div className="flex justify-between gap-2">
-                <dt>Last Active</dt>
-                <dd className="font-medium text-ink-800">
+              <div className="flex min-w-0 justify-between gap-2">
+                <dt className="shrink-0">Last Active</dt>
+                <dd className="min-w-0 truncate font-medium text-ink-800">
                   {data.lastActive ? ago(data.lastActive) : "—"}
                 </dd>
               </div>
