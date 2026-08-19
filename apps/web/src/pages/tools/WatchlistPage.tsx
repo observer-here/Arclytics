@@ -62,6 +62,52 @@ function fmtShort(ts: number) {
   return new Date(ts).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+function WatchlistSignIn({ busy, onSignIn }: { busy: boolean; onSignIn: () => void }) {
+  const items = [
+    { icon: "Tokens" as const, label: "Tokens", tone: "bg-sky-50 text-sky-600" },
+    { icon: "DeFi" as const, label: "Protocols", tone: "bg-violet-50 text-violet-600" },
+    { icon: "Wallet" as const, label: "Wallets", tone: "bg-emerald-50 text-emerald-600" },
+    { icon: "Contracts" as const, label: "Contracts", tone: "bg-orange-50 text-orange-600" },
+  ];
+
+  return (
+    <div className="flex min-h-[min(480px,calc(100vh-7rem))] flex-col items-center justify-center px-4 py-10 text-center">
+      <span className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-arc-500 to-indigo-600 text-white">
+        <Icons.Watchlist size={26} />
+      </span>
+      <h1 className="mt-4 text-[17px] font-semibold text-ink-900">Watchlist</h1>
+      <p className="mt-1.5 max-w-sm text-[13px] leading-relaxed text-ink-500">
+        Sign in to save tokens, protocols, wallets and contracts to your account — synced across
+        devices.
+      </p>
+
+      <div className="mt-8 flex flex-wrap items-start justify-center gap-x-8 gap-y-5">
+        {items.map(({ icon, label, tone }) => {
+          const Icon = Icons[icon];
+          return (
+            <div key={label} className="flex w-[4.5rem] flex-col items-center gap-2">
+              <span className={`grid h-11 w-11 place-items-center rounded-xl ${tone}`}>
+                <Icon size={20} />
+              </span>
+              <span className="text-[11px] font-medium text-ink-600">{label}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <button
+        type="button"
+        onClick={onSignIn}
+        disabled={busy}
+        className="mt-9 inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-arc-600 to-indigo-600 px-5 py-2 text-[13px] font-medium text-white disabled:opacity-60"
+      >
+        <Icons.Users size={14} />
+        {busy ? "Signing in…" : "Sign in"}
+      </button>
+    </div>
+  );
+}
+
 export function WatchlistPage() {
   const user = useAuth();
   const [busy, setBusy] = useState(false);
@@ -243,23 +289,7 @@ export function WatchlistPage() {
   ];
 
   if (!user) {
-    return (
-      <div>
-        <h1 className="flex items-center gap-2 text-[15px] font-semibold text-ink-900">
-          <Icons.Watchlist size={16} className="text-arc-600" />
-          Watchlist
-        </h1>
-        <p className="mt-1 text-[13px] text-ink-500">Sign in to save tokens, protocols, wallets and contracts to your account.</p>
-        <button
-          type="button"
-          onClick={() => void signIn()}
-          disabled={busy}
-          className="mt-3 rounded-lg bg-gradient-to-r from-arc-600 to-indigo-600 px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-60"
-        >
-          {busy ? "Signing in…" : "Sign in"}
-        </button>
-      </div>
-    );
+    return <WatchlistSignIn busy={busy} onSignIn={() => void signIn()} />;
   }
 
   return (
