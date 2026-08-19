@@ -186,15 +186,3 @@ export async function getWallets(): Promise<{
   return get("/v1/wallets");
 }
 
-export type TokenHistory = {
-  mcap: Array<{ date: string; value: number }>;
-  volume: Array<{ date: string; value: number }>;
-};
-
-export async function getTokenHistory(address: string): Promise<TokenHistory> {
-  try {
-    return await get<TokenHistory>(`/v1/tokens/${encodeURIComponent(address)}/history`);
-  } catch {
-    return { mcap: [], volume: [] };
-  }
-}
