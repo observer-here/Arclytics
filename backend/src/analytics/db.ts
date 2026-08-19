@@ -421,6 +421,33 @@ export async function seedTokenSnapPrice(env: Env, address: string, day: number,
     .run();
 }
 
+export async function tokenSeriesFor(
+  env: Env,
+  address: string,
+  field: "price" | "mcap" | "holders",
+  days: number,
+): Promise<Array<{ date: string; value: number }>> {
+  const today = dayKey();
+  const from = today - days + 1;
+  const { results } = await env.DB.prepare(
+    `SELECT day, ${field} AS value FROM token_snaps
+     WHERE address = ? AND day >= ?
+     ORDER BY day ASC`,
+  )
+    .bind(address.toLowerCase(), from)
+    .all<{ day: number; value: number }>();
+
+  const byDay = new Map((results ?? []).map((r) => [r.day, r.value]));
+  const out: Array<{ date: string; value: number }> = [];
+  let last = 0;
+  for (let d = from; d <= today; d++) {
+    const hit = byDay.get(d);
+    if (hit != null && hit > 0) last = hit;
+    out.push({ date: new Date(d * DAY_MS).toISOString().slice(0, 10), value: last });
+  }
+  return out;
+}
+
 export async function tokenChangePct(
   env: Env,
   address: string,

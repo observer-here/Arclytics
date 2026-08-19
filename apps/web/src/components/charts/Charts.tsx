@@ -351,6 +351,8 @@ export function MultiLineChart({
   series: Array<{ label: string; color: string; data: Point[] }>;
 }) {
   const [range, onRange] = useChartRange(title);
+  const [tip, setTip] = useState<{ i: number; x: number; y: number } | null>(null);
+  const box = useRef<HTMLDivElement>(null);
   const n =
     range === "7D"
       ? 7
@@ -365,10 +367,19 @@ export function MultiLineChart({
     ...s,
     data: n === Number.POSITIVE_INFINITY ? s.data : s.data.slice(-Math.min(n, s.data.length)),
   }));
+  const len = Math.max(...sliced.map((s) => s.data.length), 0);
   const max = Math.max(...sliced.flatMap((s) => s.data.map((d) => d.value)), 1);
   const w = 520;
   const h = 120;
   const pad = 4;
+  const xAt = (i: number) => pad + (i / Math.max(len - 1, 1)) * (w - pad * 2);
+  const yAt = (v: number) => h - pad - (v / max) * (h - pad * 2);
+
+  const showAt = (clientX: number, clientY: number) => {
+    const el = box.current;
+    if (!el || !len) return;
+    setTip({ i: plotIndex(el, len, clientX), ...tipPos(el, clientX, clientY) });
+  };
 
   return (
     <div className="card min-w-0 overflow-hidden p-2.5">
@@ -384,34 +395,81 @@ export function MultiLineChart({
           </span>
         ))}
       </div>
-      <div className="flex min-w-0 gap-1">
-        <YAxis max={max} h={h} />
-        <svg viewBox={`0 0 ${w} ${h}`} className="h-[120px] min-w-0 w-full" preserveAspectRatio="none">
-          {[0.25, 0.5, 0.75].map((t) => (
-            <line
-              key={t}
-              x1={pad}
-              x2={w - pad}
-              y1={h - pad - t * (h - pad * 2)}
-              y2={h - pad - t * (h - pad * 2)}
-              stroke="var(--chart-grid)"
-              strokeWidth="1"
-            />
-          ))}
-          {sliced.map((s) => {
-            const line = s.data
-              .map((d, i) => {
-                const x = pad + (i / Math.max(s.data.length - 1, 1)) * (w - pad * 2);
-                const y = h - pad - (d.value / max) * (h - pad * 2);
-                return `${x},${y}`;
-              })
-              .join(" ");
-            return (
-              <polyline key={s.label} points={line} fill="none" stroke={s.color} strokeWidth="2" />
-            );
-          })}
-        </svg>
-      </div>
+      {!len ? (
+        <div className="flex h-[120px] items-center justify-center text-xs text-ink-400">No data</div>
+      ) : (
+        <div className="flex min-w-0 gap-1">
+          <YAxis max={max} h={h} />
+          <div
+            ref={box}
+            className="relative min-w-0 flex-1 cursor-crosshair touch-pan-y"
+            onPointerLeave={() => setTip(null)}
+            onPointerMove={(e) => showAt(e.clientX, e.clientY)}
+            onPointerDown={(e) => showAt(e.clientX, e.clientY)}
+          >
+            {tip && (
+              <div
+                className="pointer-events-none absolute z-20 min-w-[8rem] -translate-x-1/2 -translate-y-full rounded-md border border-ink-200 bg-white px-2 py-1 shadow-sm dark:border-[var(--line)] dark:bg-[var(--surface-1)]"
+                style={{ left: tip.x, top: tip.y }}
+              >
+                <div className="text-[10px] text-ink-400">{sliced[0]?.data[tip.i]?.date ?? ""}</div>
+                {sliced.map((s) => (
+                  <div key={s.label} className="flex items-center justify-between gap-3 text-[11px]">
+                    <span className="flex items-center gap-1 text-ink-500">
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: s.color }} />
+                      {s.label}
+                    </span>
+                    <span className="font-semibold text-ink-900">{num(s.data[tip.i]?.value ?? 0)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <svg viewBox={`0 0 ${w} ${h}`} className="h-[120px] min-w-0 w-full" preserveAspectRatio="none">
+              {[0.25, 0.5, 0.75].map((t) => (
+                <line
+                  key={t}
+                  x1={pad}
+                  x2={w - pad}
+                  y1={h - pad - t * (h - pad * 2)}
+                  y2={h - pad - t * (h - pad * 2)}
+                  stroke="var(--chart-grid)"
+                  strokeWidth="1"
+                />
+              ))}
+              {sliced.map((s) => (
+                <polyline
+                  key={s.label}
+                  points={s.data.map((d, i) => `${xAt(i)},${yAt(d.value)}`).join(" ")}
+                  fill="none"
+                  stroke={s.color}
+                  strokeWidth="2"
+                />
+              ))}
+              {tip && (
+                <>
+                  <line
+                    x1={xAt(tip.i)}
+                    x2={xAt(tip.i)}
+                    y1={pad}
+                    y2={h - pad}
+                    stroke="var(--chart-grid)"
+                    strokeWidth="1.5"
+                  />
+                  {sliced.map((s) => (
+                    <circle
+                      key={s.label}
+                      cx={xAt(tip.i)}
+                      cy={yAt(s.data[tip.i]?.value ?? 0)}
+                      r="3.2"
+                      fill={s.color}
+                    />
+                  ))}
+                </>
+              )}
+            </svg>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

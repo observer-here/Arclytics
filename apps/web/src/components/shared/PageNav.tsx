@@ -23,7 +23,7 @@ export function PageNav({
         type="button"
         disabled={!hasPrev || loading}
         onClick={onPrev}
-        className="rounded-md border border-ink-200 px-2.5 py-1 font-medium text-ink-700 transition enabled:hover:border-arc-500 enabled:hover:text-arc-700 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-md border border-ink-200 px-2.5 py-1 font-medium text-ink-700 enabled:hover:border-arc-500 enabled:hover:text-arc-700 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Previous
       </button>
@@ -36,7 +36,7 @@ export function PageNav({
         type="button"
         disabled={!hasNext || loading}
         onClick={onNext}
-        className="rounded-md border border-ink-200 px-2.5 py-1 font-medium text-ink-700 transition enabled:hover:border-arc-500 enabled:hover:text-arc-700 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-md border border-ink-200 px-2.5 py-1 font-medium text-ink-700 enabled:hover:border-arc-500 enabled:hover:text-arc-700 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Next
       </button>

@@ -521,24 +521,32 @@ async function paymentRouterStats(arc: Arcscan, p: ProtocolConfig): Promise<Paym
 }
 
 async function recentTxs(arc: Arcscan, p: ProtocolConfig) {
-  const items: Array<Record<string, unknown>> = [];
-  for (const c of p.contracts.slice(0, 4)) {
-    try {
-      const page = await arc.addressTransactions(c.address);
-      for (const tx of page.items.slice(0, 10)) {
-        items.push({ ...tx, _contract: c.label ?? c.role });
+  const unique = [...new Map(p.contracts.map((c) => [c.address.toLowerCase(), c])).values()];
+  const pages = await Promise.all(
+    unique.map(async (c) => {
+      try {
+        const page = await arc.addressTransactions(c.address);
+        return page.items.map((tx) => ({ ...tx, _contract: c.label ?? c.role }));
+      } catch {
+        return [] as Array<Record<string, unknown>>;
       }
-    } catch {
-      // skip
-    }
-  }
-  return items
+    }),
+  );
+  const seen = new Set<string>();
+  return pages
+    .flat()
+    .filter((tx) => {
+      const hash = String(tx.hash ?? "");
+      if (!hash || seen.has(hash)) return false;
+      seen.add(hash);
+      return true;
+    })
     .sort((a, b) => {
       const ta = a.timestamp ? new Date(String(a.timestamp)).getTime() : 0;
       const tb = b.timestamp ? new Date(String(b.timestamp)).getTime() : 0;
       return tb - ta;
     })
-    .slice(0, 12);
+    .slice(0, 40);
 }
 
 function buildPairs(

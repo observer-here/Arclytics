@@ -4,7 +4,7 @@ import { PageNav } from "@/components/shared/PageNav";
 import { usePagedList } from "@/hooks/usePagedList";
 import { arcscan, ARCSCAN_PAGE_SIZE, type PageParams } from "@/libs/arcscan";
 import { num, shortHash } from "@/utils/format";
-import { Skel, PageNavSkel } from "@/components/shared/Skel";
+import { Skel } from "@/components/shared/Skel";
 
 function BlockRowSkel() {
   return (
@@ -76,19 +76,15 @@ export function BlocksPage() {
           </tbody>
         </table>
       </div>
-      {boot ? (
-        <PageNavSkel />
-      ) : (
-        <PageNav
-          page={page}
-          hasPrev={hasPrev}
-          hasNext={hasNext}
-          loading={loading}
-          onPrev={prevPage}
-          onNext={nextPage}
-          pageSize={items.length}
-        />
-      )}
+      <PageNav
+        page={page}
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        loading={loading}
+        onPrev={prevPage}
+        onNext={nextPage}
+        pageSize={items.length}
+      />
     </div>
   );
 }

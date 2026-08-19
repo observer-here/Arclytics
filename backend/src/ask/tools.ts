@@ -2,40 +2,25 @@ import { addresses } from "@arclytics/chain";
 import { protocols } from "@arclytics/protocols";
 import type { Env } from "../lib/env";
 import { createArcscan } from "../analytics/arcscan";
-import { getDetail, getEco, getTokens, getWallets, listRankings, chainTvlSeries } from "../analytics/db";
+import {
+  chainTvlSeries,
+  getDetail,
+  getEco,
+  getTokens,
+  getWallets,
+  listRankings,
+  seriesFor,
+  tokenSeriesFor,
+} from "../analytics/db";
 
 const ADDR = /^0x[a-fA-F0-9]{40}$/;
 const TX = /^0x[a-fA-F0-9]{64}$/;
-const LINES = new Set([
-  "accountsGrowth",
-  "activeAccounts",
-  "newAccounts",
-  "averageTxnFee",
-  "newTxns",
-  "txnsFee",
-  "txnsGrowth",
-  "txnsSuccessRate",
-  "averageBlockSize",
-  "newBlocks",
-  "newNativeCoinTransfers",
-  "averageGasLimit",
-  "averageGasPrice",
-  "gasUsedGrowth",
-  "networkUtilization",
-  "averageGasUsed",
-  "contractsGrowth",
-  "newContracts",
-  "newVerifiedContracts",
-  "verifiedContractsGrowth",
-  "userOpsGrowth",
-  "newUserOps",
-  "newAccountAbstractionWallets",
-  "accountAbstractionWalletsGrowth",
-  "activeAccountAbstractionWallets",
-  "activeBundlers",
-  "activePaymasters",
-]);
 const ACTIVE = new Set(protocols.map((p) => p.slug));
+
+const PROTOCOL_FIELDS = ["tvl", "volume", "fees", "users"] as const;
+const TOKEN_FIELDS = ["price", "mcap", "holders"] as const;
+type ProtocolField = (typeof PROTOCOL_FIELDS)[number];
+type TokenField = (typeof TOKEN_FIELDS)[number];
 
 function clip(v: unknown, n = 2200) {
   const s = typeof v === "string" ? v : JSON.stringify(v);
@@ -54,12 +39,30 @@ function num(v: unknown) {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Raw on-chain integer -> human number. Arc native USDC is 18dp, the ERC-20 interface is 6dp. */
+function scaled(raw: unknown, decimals: number) {
+  const s = typeof raw === "string" ? raw.trim() : String(raw ?? "");
+  if (!s) return 0;
+  try {
+    const big = s.startsWith("0x") ? BigInt(s) : BigInt(s.split(".")[0]);
+    return Number(big) / 10 ** decimals;
+  } catch {
+    return num(raw) / 10 ** decimals;
+  }
+}
+
 function money(v: unknown) {
   const n = num(v);
   if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
   if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
   return `$${n.toFixed(0)}`;
+}
+
+function price(v: unknown) {
+  const n = num(v);
+  if (!n) return "—";
+  return n < 1 ? `$${n.toPrecision(4)}` : `$${n.toFixed(4)}`;
 }
 
 function qty(v: unknown) {
@@ -70,18 +73,21 @@ function qty(v: unknown) {
   return String(Math.round(n));
 }
 
-function lines(rows: Array<string | false | null | undefined>) {
-  return rows.filter(Boolean).join("\n");
+function usdc(raw: unknown, decimals = 18) {
+  const n = scaled(raw, decimals);
+  if (!n) return "0 USDC";
+  return `${n < 1 ? n.toPrecision(3) : n.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDC`;
 }
 
-function pick(obj: Record<string, unknown> | null | undefined, keys: string[]) {
-  const out: string[] = [];
-  for (const k of keys) {
-    const v = obj?.[k];
-    if (v == null || v === "") continue;
-    out.push(`${k.replace(/_/g, " ")} ${typeof v === "object" ? clip(v, 120) : String(v)}`);
-  }
-  return out;
+function signedPct(v: unknown) {
+  if (v == null) return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+}
+
+function lines(rows: Array<string | false | null | undefined>) {
+  return rows.filter(Boolean).join("\n");
 }
 
 type DocHit = { title: string; url: string; blurb: string };
@@ -136,12 +142,6 @@ export async function searchArcDocs(q: string) {
   return clip(`${picks.map((h) => `${h.title} (${h.url})`).join("\n")}\n\n${pages.join("\n\n")}`, 5000);
 }
 
-function signedPct(v: unknown) {
-  const n = num(v);
-  if (!Number.isFinite(n)) return null;
-  return `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
-}
-
 export async function liveBrief(env: Env) {
   const [eco, stats, counters, head, gas, ranks, tokens] = await Promise.all([
     getEco(env).catch(() => null),
@@ -162,25 +162,29 @@ export async function liveBrief(env: Env) {
     .sort((a, b) => b.tvlUsd - a.tvlUsd)
     .slice(0, 8);
   const tvlCh = signedPct(st.tvlChange);
-  const toks = ((tokens?.items ?? []) as Array<Record<string, unknown>>).slice(0, 6);
+  const toks = ((tokens?.items ?? []) as Array<Record<string, unknown>>).slice(0, 8);
+  const gwei = gas != null ? scaled(gas, 9) : null;
   return lines([
     tvl > 0
-      ? `TVL ${money(tvl)}${tvlCh ? ` (${tvlCh} 24h)` : ""} · ${qty(st.protocols ?? top.length)} protocols`
+      ? `TVL ${money(tvl)}${tvlCh ? ` (${tvlCh} 24h)` : ""} across ${qty(st.protocols ?? top.length)} tracked protocols (${protocols.length} in the registry)`
       : "TVL unavailable",
-    `Volume 24h ${money(st.volume24h)} · fees 24h ${money(st.fees24h)} · users ${qty(st.activeUsers)}`,
-    `ArcScan txs ${qty(s.total_transactions ?? c.totalTxns)} total · ${qty(c.newTxns24h ?? s.transactions_today)} new 24h · addresses ${qty(s.total_addresses ?? c.totalAddresses)} · blocks ${qty(s.total_blocks ?? c.totalBlocks)}`,
-    head != null ? `RPC head ${num(head)} · gas ${num(gas)} wei · chain 5042002` : null,
-    `Native USDC ${addresses.usdc}`,
+    `Volume 24h ${money(st.volume24h)} · fees 24h ${money(st.fees24h)} · active users 24h ${qty(st.activeUsers)} · stablecoin mcap ${money(st.stableMcap)}`,
+    `ArcScan: ${qty(s.total_transactions ?? c.totalTxns)} txs total · ${qty(c.newTxns24h ?? s.transactions_today)} new 24h · ${qty(s.total_addresses ?? c.totalAddresses)} addresses · ${qty(s.total_blocks ?? c.totalBlocks)} blocks · ${qty(c.totalContracts)} contracts`,
+    head != null
+      ? `RPC head block ${num(head)}${gwei ? ` · gas ${gwei.toFixed(1)} Gwei (protocol floor is 20 Gwei)` : ""}`
+      : null,
     top.length
-      ? `Protocols: ${top
+      ? `Top protocols: ${top
           .map((r, i) => {
             const ch = signedPct(r.change24h);
-            return `${i + 1}. ${r.name} (${r.category}) ${money(r.tvlUsd)}${ch ? ` ${ch}` : ""} vol ${money(r.volume24h)}`;
+            return `${i + 1}. ${r.name} [${r.slug}] ${r.category} TVL ${money(r.tvlUsd)}${ch ? ` ${ch}` : ""} vol ${money(r.volume24h)}`;
           })
           .join(" · ")}`
       : null,
     toks.length
-      ? `Tokens: ${toks.map((t) => `${t.symbol ?? t.name} mcap ${money(t.marketCap)} holders ${qty(t.holders)}`).join(" · ")}`
+      ? `Top tokens: ${toks
+          .map((t) => `${t.symbol ?? t.name} ${price(t.price)} mcap ${money(t.marketCap)} holders ${qty(t.holders)}`)
+          .join(" · ")}`
       : null,
   ]);
 }
@@ -221,14 +225,144 @@ async function rpc(env: Env, method: string, params: unknown[] = []) {
   return data.result;
 }
 
-const props = { type: "object" as const, properties: {} };
+type TokenRow = Record<string, unknown> & { address?: string; symbol?: string; name?: string };
+
+/** Resolve free text to a tracked protocol and/or a token in the Arclytics feed. */
+async function resolve(env: Env, raw: string) {
+  const q = raw.trim().toLowerCase();
+  const protoHits = q
+    ? protocols.filter(
+        (p) => p.slug === q || p.name.toLowerCase() === q || p.slug.includes(q) || p.name.toLowerCase().includes(q),
+      )
+    : [];
+  const feed = await getTokens(env).catch(() => null);
+  const items = (feed?.items ?? []) as TokenRow[];
+  const tokenHits = q
+    ? items.filter((t) => {
+        const sym = String(t.symbol ?? "").toLowerCase();
+        const name = String(t.name ?? "").toLowerCase();
+        const addr = String(t.address ?? "").toLowerCase();
+        return addr === q || sym === q || name === q || sym.includes(q) || name.includes(q);
+      })
+    : [];
+  return { protoHits: protoHits.slice(0, 5), tokenHits: tokenHits.slice(0, 5) };
+}
+
+export type Subject =
+  | { kind: "protocol"; slug: string; name: string }
+  | { kind: "token"; address: string; symbol: string };
+
+/** Scan a free-form question for the protocol or curated token it is about. */
+export async function matchSubject(env: Env, text: string): Promise<Subject | null> {
+  const t = text.toLowerCase();
+  const p = protocols.find((x) => t.includes(x.slug) || t.includes(x.name.toLowerCase()));
+  if (p) return { kind: "protocol", slug: p.slug, name: p.name };
+  const feed = await getTokens(env).catch(() => null);
+  const hit = ((feed?.items ?? []) as TokenRow[]).find((x) => {
+    const addr = String(x.address ?? "").toLowerCase();
+    if (addr && t.includes(addr)) return true;
+    const sym = String(x.symbol ?? "").toLowerCase();
+    return sym.length > 2 && new RegExp(`\\b${sym.replace(/[^a-z0-9]/g, ".")}\\b`).test(t);
+  });
+  if (!hit?.address) return null;
+  return { kind: "token", address: String(hit.address), symbol: String(hit.symbol ?? hit.name ?? "token") };
+}
+
+function tokenLine(t: TokenRow) {
+  return lines([
+    `${t.symbol ?? t.name} — ${t.name ?? ""} at ${t.address}`,
+    `Price ${price(t.price)}${signedPct(t.change24h) ? ` (${signedPct(t.change24h)} 24h)` : ""}${signedPct(t.change7d) ? `, ${signedPct(t.change7d)} 7d` : ""}`,
+    `Market cap ${money(t.marketCap)} · 24h volume ${money(t.volume24h)} · ${qty(t.holders)} holders · ${qty(t.transfers)} transfers`,
+    t.category || t.protocol ? `Category ${t.category ?? "—"}, protocol ${t.protocol ?? "—"}` : null,
+    `In-app page /tokens/${t.address}`,
+  ]);
+}
+
+function trend(title: string, series: Array<{ date: string; value: number }>, fmt: (v: unknown) => string) {
+  const live = series.filter((p) => p.value > 0);
+  if (!live.length) return `${title}: no history recorded yet.`;
+  const first = live[0];
+  const last = live[live.length - 1];
+  const peak = live.reduce((a, b) => (b.value > a.value ? b : a));
+  const pct = first.value > 0 ? ((last.value - first.value) / first.value) * 100 : 0;
+  return lines([
+    `${title} over ${series.length} days (${live.length} with data).`,
+    `Now ${fmt(last.value)} on ${last.date}, started ${fmt(first.value)} on ${first.date} — ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}%.`,
+    `Peak ${fmt(peak.value)} on ${peak.date}.`,
+    "Describe the shape of the move. Do not list every day.",
+  ]);
+}
+
+const noArgs = { type: "object" as const, properties: {} };
 
 export const ASK_TOOLS = [
   {
     type: "function",
     function: {
-      name: "lookup_token",
-      description: `ArcScan token + top holders. Native USDC is ${addresses.usdc}.`,
+      name: "arclytics_find",
+      description:
+        "Resolve a protocol or token by name, symbol, slug, or address. Use this first whenever the user names something that is not already in the snapshot — it returns the slug/address you need for the other tools plus the in-app link.",
+      parameters: {
+        type: "object",
+        properties: { q: { type: "string", description: "Name, symbol, slug, or 0x address" } },
+        required: ["q"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "arclytics_protocol",
+      description: "Full Arclytics detail for one protocol slug: TVL, volume, fees, users, changes, top pairs, contracts.",
+      parameters: {
+        type: "object",
+        properties: { slug: { type: "string" } },
+        required: ["slug"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "arclytics_token",
+      description: "Arclytics feed data for one token by symbol or address: price, market cap, 24h volume, holders, changes.",
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string", description: "Symbol or 0x address" } },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "arclytics_series",
+      description:
+        "Historical trend from Arclytics snapshots. metric tvl/volume/fees/users needs a protocol slug (omit subject for chain-wide TVL); metric price/mcap/holders needs a token symbol or address.",
+      parameters: {
+        type: "object",
+        properties: {
+          metric: { type: "string", enum: [...PROTOCOL_FIELDS, ...TOKEN_FIELDS] },
+          subject: { type: "string", description: "Protocol slug, or token symbol/address" },
+          days: { type: "number", description: "Lookback window, default 30, max 365" },
+        },
+        required: ["metric"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "arclytics_wallets",
+      description: "Top tracked wallets on Arclytics with net worth and labels.",
+      parameters: noArgs,
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "lookup_address",
+      description: `ArcScan profile for any address: wallet or contract, native USDC balance, tx count, tokens held. Native USDC is ${addresses.usdc}.`,
       parameters: {
         type: "object",
         properties: { address: { type: "string" } },
@@ -239,8 +373,8 @@ export const ASK_TOOLS = [
   {
     type: "function",
     function: {
-      name: "lookup_address",
-      description: "ArcScan address profile, balance, tokens, recent txs.",
+      name: "lookup_token",
+      description: "ArcScan token metadata, supply, and top holders for any token address, including ones Arclytics does not track.",
       parameters: {
         type: "object",
         properties: { address: { type: "string" } },
@@ -252,7 +386,7 @@ export const ASK_TOOLS = [
     type: "function",
     function: {
       name: "lookup_tx",
-      description: "ArcScan transaction by hash.",
+      description: "ArcScan transaction by hash: status, block, from/to, value, fee.",
       parameters: {
         type: "object",
         properties: { hash: { type: "string" } },
@@ -264,7 +398,7 @@ export const ASK_TOOLS = [
     type: "function",
     function: {
       name: "search_chain",
-      description: "ArcScan search for a name, token, address, or tx.",
+      description: "ArcScan full-chain search. Use for contracts, tokens, or names Arclytics does not track.",
       parameters: {
         type: "object",
         properties: { q: { type: "string" } },
@@ -277,14 +411,14 @@ export const ASK_TOOLS = [
     function: {
       name: "recent_activity",
       description: "Latest ArcScan transactions and blocks.",
-      parameters: props,
+      parameters: noArgs,
     },
   },
   {
     type: "function",
     function: {
       name: "rpc_live",
-      description: "JSON-RPC head, gas price, optional balance.",
+      description: "JSON-RPC chain head, chain id, gas price, and optionally a native USDC balance.",
       parameters: {
         type: "object",
         properties: { address: { type: "string" } },
@@ -294,28 +428,8 @@ export const ASK_TOOLS = [
   {
     type: "function",
     function: {
-      name: "arclytics_protocol",
-      description: "One protocol from Arclytics (slug e.g. synthra, wusdc, perpdex).",
-      parameters: {
-        type: "object",
-        properties: { slug: { type: "string" } },
-        required: ["slug"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "arclytics_wallets",
-      description: "Top wallets on Arclytics.",
-      parameters: props,
-    },
-  },
-  {
-    type: "function",
-    function: {
       name: "arc_docs",
-      description: "Search docs.arc.io (gas, finality, RPC, App Kit, agentic economy, contracts).",
+      description: "Search docs.arc.io for how Arc works: gas and fees, finality, RPC, App Kit, CCTP, agentic economy, contract addresses.",
       parameters: {
         type: "object",
         properties: { q: { type: "string" } },
@@ -335,45 +449,88 @@ export async function runAskTool(env: Env, name: string, rawArgs: string): Promi
   const scan = createArcscan(env);
   try {
     switch (name) {
-      case "arcscan_stats": {
-        const [s, idx] = await Promise.all([
-          v2(env, "/stats") as Promise<Record<string, unknown>>,
-          v2(env, "/main-page/indexing-status").catch(() => null),
-        ]);
+      case "arclytics_find": {
+        const q = String(args.q ?? "").trim();
+        if (q.length < 2) return "query too short";
+        const { protoHits, tokenHits } = await resolve(env, q);
+        if (!protoHits.length && !tokenHits.length) {
+          return `Arclytics does not track "${q}". Try search_chain or lookup_address for raw ArcScan data.`;
+        }
+        const ranks = protoHits.length ? await listRankings(env).catch(() => []) : [];
+        const byslug = new Map(ranks.map((r) => [r.slug, r]));
         return lines([
-          "ArcScan live stats (rewrite, do not dump):",
-          `Transactions ${qty(s.total_transactions)}, today ${qty(s.transactions_today)}`,
-          `Addresses ${qty(s.total_addresses)}, blocks ${qty(s.total_blocks)}`,
-          `Gas used today ${qty(s.gas_used_today)}`,
-          idx ? `Indexer ${clip(idx, 180)}` : null,
+          ...protoHits.map((p) => {
+            const r = byslug.get(p.slug);
+            return `Protocol ${p.name} [slug ${p.slug}] ${p.category}${
+              r ? ` — TVL ${money(r.tvlUsd)}, 24h vol ${money(r.volume24h)}` : ""
+            } — in-app page /protocols/${p.slug}`;
+          }),
+          ...tokenHits.map(
+            (t) =>
+              `Token ${t.symbol ?? t.name} [${t.address}] — ${price(t.price)}, mcap ${money(t.marketCap)} — in-app page /tokens/${t.address}`,
+          ),
         ]);
       }
-      case "stats_counters": {
-        const c = (await statsApi(env, "/counters")) as Record<string, unknown>;
+      case "arclytics_protocol": {
+        const slug = String(args.slug ?? "").toLowerCase();
+        const d = await getDetail(env, slug);
+        if (!d) {
+          const { protoHits } = await resolve(env, slug);
+          return protoHits.length
+            ? `No detail stored for "${slug}". Closest tracked slugs: ${protoHits.map((p) => p.slug).join(", ")}.`
+            : `"${slug}" is not a tracked protocol.`;
+        }
+        const pairs = (d.pairs ?? []).slice(0, 4).map((p) => `${p.pair} ${money(p.volume24h)} 24h vol`);
+        const ch24 = signedPct(d.change24h);
         return lines([
-          "Stats-service counters:",
-          `Accounts ${qty(c.totalAccounts)} vs addresses ${qty(c.totalAddresses)} (these differ)`,
-          `Txs ${qty(c.totalTxns)}, 24h new txs ${qty(c.newTxns24h)}`,
-          `Contracts ${qty(c.totalContracts)}, 24h fees ${c.txnsFee24h ?? c.fees24h ?? "—"}`,
+          `${d.protocol.name} is a ${d.protocol.category} protocol on Arc Testnet, ranked #${d.rank ?? "—"} by TVL.`,
+          d.protocol.description ? String(d.protocol.description).slice(0, 400) : null,
+          `TVL ${money(d.tvlUsd)}${ch24 ? ` (${ch24} 24h)` : ""} · 24h volume ${money(d.volume24h)}${signedPct(d.changeVol) ? ` (${signedPct(d.changeVol)})` : ""} · 24h fees ${money(d.fees24h)} · 24h active users ${qty(d.activeUsers)}`,
+          `${qty(d.totals?.txs)} transactions and ${qty(d.totals?.transfers)} transfers lifetime across ${(d.contracts ?? []).length} tracked contracts${d.age ? `, live for ${d.age}` : ""}.`,
+          pairs.length ? `Top pools: ${pairs.join(" · ")}` : null,
+          `In-app page /protocols/${slug}`,
         ]);
       }
-      case "stats_page": {
-        const page = String(args.page ?? "main");
-        if (!["main", "transactions", "contracts"].includes(page)) return "invalid page";
-        const data = (await statsApi(env, `/pages/${page}`)) as Record<string, unknown>;
-        return lines([`Stats page ${page}:`, ...pick(data, Object.keys(data).slice(0, 12))]);
+      case "arclytics_token": {
+        const q = String(args.query ?? "").trim();
+        const { tokenHits } = await resolve(env, q);
+        if (!tokenHits.length) return `"${q}" is not in the Arclytics token feed. Try lookup_token with a 0x address.`;
+        return tokenHits.slice(0, 2).map(tokenLine).join("\n\n");
       }
-      case "stats_line": {
-        const id = String(args.name ?? "");
-        if (!LINES.has(id)) return `unknown line ${id}`;
-        const res = String(args.resolution ?? "DAY");
-        const q = ["DAY", "WEEK", "MONTH", "YEAR"].includes(res) ? res : "DAY";
-        const data = (await statsApi(env, `/lines/${id}?resolution=${q}`)) as {
-          chart?: Array<{ date: string; value: string }>;
-        };
-        const pts = (data.chart ?? []).slice(-7);
-        const last = pts.at(-1);
-        return `${id} (${q}): last ${pts.length} points, latest ${last?.date ?? "—"} = ${last?.value ?? "—"}. Trend only, do not list every day.`;
+      case "arclytics_series": {
+        const metric = String(args.metric ?? "tvl").toLowerCase();
+        const subject = String(args.subject ?? "").trim();
+        const days = Math.min(365, Math.max(7, Math.round(num(args.days) || 30)));
+        if ((TOKEN_FIELDS as readonly string[]).includes(metric)) {
+          const { tokenHits } = await resolve(env, subject);
+          const t = tokenHits[0];
+          if (!t?.address) return `Need a tracked token for ${metric}. "${subject}" did not resolve.`;
+          const series = await tokenSeriesFor(env, String(t.address), metric as TokenField, days);
+          const fmt = metric === "holders" ? qty : metric === "price" ? price : money;
+          return trend(`${t.symbol ?? t.name} ${metric}`, series, fmt);
+        }
+        if (!(PROTOCOL_FIELDS as readonly string[]).includes(metric)) return `unsupported metric ${metric}`;
+        if (!subject) {
+          return trend("Arc chain TVL", await chainTvlSeries(env, days), money);
+        }
+        const { protoHits } = await resolve(env, subject);
+        const p = protoHits[0];
+        if (!p) return `"${subject}" is not a tracked protocol.`;
+        const series = await seriesFor(env, p.slug, metric as ProtocolField, days);
+        return trend(`${p.name} ${metric}`, series, metric === "users" ? qty : money);
+      }
+      case "arclytics_wallets": {
+        const data = await getWallets(env);
+        const items = (data?.items ?? []) as Array<Record<string, unknown>>;
+        if (!items.length) return "No wallet data yet.";
+        return lines([
+          "Top tracked wallets (Arclytics):",
+          ...items.slice(0, 8).map((w, i) => {
+            const addr = String(w.address ?? "");
+            return `${i + 1}. ${addr.slice(0, 10)}… ${w.label ? `(${w.label})` : ""} net worth ${money(w.netWorth)}, ${qty(w.txsTotal ?? w.txs24h)} txs — /address/${addr}`;
+          }),
+          "Wallet tracker page /tools/wallet",
+        ]);
       }
       case "lookup_address": {
         const address = String(args.address ?? "").toLowerCase();
@@ -384,18 +541,22 @@ export async function runAskTool(env: Env, name: string, rawArgs: string): Promi
           scan.addressTokens(address).catch(() => ({ items: [] })),
           scan.addressTransactions(address).catch(() => ({ items: [] })),
         ]);
-        const tok = tokens.items.slice(0, 5).map((t) => {
+        const c = counters as Record<string, unknown>;
+        const tok = tokens.items.slice(0, 6).map((t) => {
           const r = t as Record<string, unknown>;
-          const token = r.token as Record<string, unknown> | undefined;
-          return String(token?.symbol ?? r.symbol ?? "?");
+          const meta = (r.token ?? {}) as Record<string, unknown>;
+          const sym = String(meta.symbol ?? r.symbol ?? "?");
+          const dec = num(meta.decimals ?? 18) || 18;
+          return `${sym} ${scaled(r.value ?? r.balance, dec).toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
         });
         const last = txs.items[0] as Record<string, unknown> | undefined;
         return lines([
-          `Address ${address} is ${profile.is_contract ? "a contract" : "a wallet"}.`,
-          `Native balance ${profile.coin_balance ?? "—"}.`,
-          `Tx count ${qty((counters as Record<string, unknown>).transactions_count)}.`,
-          tok.length ? `Tokens seen: ${tok.join(", ")}.` : null,
-          last?.hash ? `Latest tx ${String(last.hash).slice(0, 12)}…` : null,
+          `Address ${address} is ${profile.is_contract ? "a contract" : "a wallet"}${profile.name ? ` named ${profile.name}` : ""}.`,
+          `Native balance ${usdc(profile.coin_balance)} (Arc native USDC, 18 decimals).`,
+          `${qty(c.transactions_count)} transactions, ${qty(c.token_transfers_count)} token transfers.`,
+          tok.length ? `Holdings: ${tok.join(", ")}.` : "No ERC-20 balances.",
+          last?.hash ? `Latest tx ${String(last.hash)}.` : null,
+          `In-app page /address/${address}`,
         ]);
       }
       case "lookup_token": {
@@ -407,26 +568,34 @@ export async function runAskTool(env: Env, name: string, rawArgs: string): Promi
           scan.tokenHolders(address).catch(() => ({ items: [] })),
         ]);
         const t = token as Record<string, unknown>;
+        const c = counters as Record<string, unknown>;
+        const dec = num(t.decimals ?? 18) || 18;
         const top = holders.items.slice(0, 5).map((h, i) => {
           const r = h as Record<string, unknown>;
-          const addr = String((r.address as Record<string, unknown>)?.hash ?? r.address ?? "").slice(0, 10);
-          return `#${i + 1} ${addr}… ${r.value ?? r.balance ?? ""}`;
+          const addr = String((r.address as Record<string, unknown>)?.hash ?? r.address ?? "");
+          const bal = scaled(r.value ?? r.balance, dec);
+          return `#${i + 1} ${addr.slice(0, 12)}… ${bal.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
         });
         return lines([
-          `Token ${t.name ?? ""} (${t.symbol ?? "?"}) at ${address}.`,
-          `Holders ${qty((counters as Record<string, unknown>).token_holders_count ?? t.holders)}, transfers ${qty((counters as Record<string, unknown>).transfers_count)}.`,
+          `Token ${t.name ?? ""} (${t.symbol ?? "?"}), ${t.type ?? "ERC-20"} at ${address}, ${dec} decimals.`,
+          t.total_supply ? `Total supply ${scaled(t.total_supply, dec).toLocaleString("en-US", { maximumFractionDigits: 0 })} ${t.symbol ?? ""}.` : null,
+          `${qty(c.token_holders_count ?? t.holders)} holders, ${qty(c.transfers_count)} transfers.`,
           top.length ? `Top holders: ${top.join("; ")}.` : null,
+          `In-app page /tokens/${address}`,
         ]);
       }
       case "lookup_tx": {
         const hash = String(args.hash ?? "").toLowerCase();
         if (!TX.test(hash)) return "invalid tx hash";
         const tx = (await scan.transaction(hash)) as Record<string, unknown>;
+        const from = (tx.from ?? {}) as Record<string, unknown>;
+        const to = (tx.to ?? {}) as Record<string, unknown>;
         return lines([
-          `Tx ${hash}`,
-          `Status ${tx.status ?? tx.result ?? "—"}, block ${tx.block_number ?? "—"}`,
-          `From ${tx.from ? clip(tx.from, 80) : "—"} to ${tx.to ? clip(tx.to, 80) : "—"}`,
-          `Value ${tx.value ?? "—"}, fee ${tx.fee ? clip(tx.fee, 80) : "—"}`,
+          `Tx ${hash} — ${tx.status ?? tx.result ?? "unknown status"} in block ${tx.block_number ?? tx.block ?? "—"}.`,
+          `From ${from.hash ?? "—"} to ${to.hash ?? "—"}${to.is_contract ? " (a contract)" : ""}.`,
+          `Value ${usdc(tx.value)}, fee ${usdc((tx.fee as Record<string, unknown>)?.value ?? tx.fee)}.`,
+          tx.method ? `Method ${tx.method}.` : null,
+          `Arc has deterministic finality — one confirmation is final.`,
         ]);
       }
       case "search_chain": {
@@ -438,7 +607,7 @@ export async function runAskTool(env: Env, name: string, rawArgs: string): Promi
         const items = (data.items ?? []).slice(0, 6);
         if (!items.length) return `No ArcScan hits for "${q}".`;
         return items
-          .map((it) => `${it.type ?? "item"} ${it.name ?? it.symbol ?? it.address ?? it.hash ?? clip(it, 80)}`)
+          .map((it) => `${it.type ?? "item"} ${it.name ?? it.symbol ?? ""} ${it.address ?? it.hash ?? ""}`.trim())
           .join("\n");
       }
       case "recent_activity": {
@@ -447,16 +616,13 @@ export async function runAskTool(env: Env, name: string, rawArgs: string): Promi
         const bl = (Array.isArray(blocks) ? blocks : []) as Array<Record<string, unknown>>;
         return lines([
           "Recent ArcScan activity:",
-          ...items.map((t) => `tx ${String(t.hash ?? "").slice(0, 12)}… block ${t.block_number ?? "?"}`),
-          ...bl.slice(0, 3).map((b) => `block ${b.height ?? b.number ?? "?"} txs ${b.tx_count ?? b.transaction_count ?? ""}`),
+          ...items.map(
+            (t) =>
+              `tx ${String(t.hash ?? "").slice(0, 14)}… ${t.method ?? "transfer"} ${usdc(t.value)} in block ${t.block_number ?? "?"}`,
+          ),
+          ...bl.slice(0, 3).map((b) => `block ${b.height ?? b.number ?? "?"} with ${b.tx_count ?? b.transaction_count ?? "?"} txs`),
+          "Full feed /explorer",
         ]);
-      }
-      case "arcscan_tokens": {
-        const data = (await v2(env, "/tokens?type=ERC-20")) as { items?: Array<Record<string, unknown>> };
-        const items = (data.items ?? []).slice(0, 10);
-        return items
-          .map((t) => `${t.symbol ?? t.name} holders ${qty(t.holders)} transfers ${qty(t.transfers_count ?? t.transfer_count)}`)
-          .join("\n");
       }
       case "rpc_live": {
         const address = String(args.address ?? "").toLowerCase();
@@ -468,75 +634,12 @@ export async function runAskTool(env: Env, name: string, rawArgs: string): Promi
         ]);
         const latest = (block ?? {}) as Record<string, unknown>;
         const bal = ADDR.test(address) ? await rpc(env, "eth_getBalance", [address, "latest"]) : null;
+        const gwei = scaled(gasPrice, 9);
         return lines([
-          `JSON-RPC ${rpcUrl(env)}`,
-          `Chain id ${num(chainId)} (expect 5042002), head block ${num(blockNumber)}`,
-          `Gas price ${num(gasPrice)} wei`,
-          `Latest block txs ${Array.isArray(latest.transactions) ? latest.transactions.length : "—"}`,
-          bal != null ? `Balance of ${address}: ${num(bal)}` : null,
-        ]);
-      }
-      case "arclytics_protocols": {
-        const rows = (await listRankings(env))
-          .filter((r) => ACTIVE.has(r.slug))
-          .sort((a, b) => b.tvlUsd - a.tvlUsd)
-          .slice(0, 10);
-        return lines([
-          "Arclytics protocol rankings (backend D1):",
-          ...rows.map(
-            (r, i) =>
-              `${i + 1}. ${r.name} (${r.category}) TVL ${money(r.tvlUsd)}, 24h vol ${money(r.volume24h)}`,
-          ),
-        ]);
-      }
-      case "arclytics_protocol": {
-        const slug = String(args.slug ?? "").toLowerCase();
-        const d = await getDetail(env, slug);
-        if (!d) return "protocol not found";
-        return lines([
-          `${d.protocol.name} is a ${d.protocol.category} protocol.`,
-          d.protocol.description ? String(d.protocol.description).slice(0, 400) : null,
-          `TVL ${money(d.tvlUsd)} (${d.change24h != null ? `${d.change24h.toFixed(2)}% 24h` : "no 24h change"}), volume ${money(d.volume24h)}, fees ${money(d.fees24h)}.`,
-        ]);
-      }
-      case "arclytics_ecosystem": {
-        const eco = (await getEco(env)) as {
-          stats?: Record<string, unknown>;
-          rows?: Array<Record<string, unknown>>;
-        } | null;
-        if (!eco) return "no ecosystem data yet";
-        const s = eco.stats ?? {};
-        const top = (eco.rows ?? []).slice(0, 6);
-        return lines([
-          `Ecosystem TVL ${money(s.tvlUsd)}, 24h volume ${money(s.volume24h)}, fees ${money(s.fees24h)}, active users ${qty(s.activeUsers)}.`,
-          ...top.map((r) => `${r.name} ${money(r.tvlUsd)}`),
-        ]);
-      }
-      case "arclytics_tvl": {
-        const series = await chainTvlSeries(env, 90);
-        const latest = series.at(-1)?.value ?? 0;
-        const first = series.find((p) => p.value > 0)?.value ?? 0;
-        const pct = first > 0 ? ((latest - first) / first) * 100 : 0;
-        return `Arc chain TVL from Arclytics snapshots: ${money(latest)}, ${pct >= 0 ? "up" : "down"} ${Math.abs(pct).toFixed(1)}% over ~${series.length} days. Explain the move; do not list dates.`;
-      }
-      case "arclytics_tokens": {
-        const data = await getTokens(env);
-        const items = (data?.items ?? []) as Array<Record<string, unknown>>;
-        return lines([
-          "Arclytics token feed:",
-          ...items.slice(0, 10).map(
-            (t) => `${t.symbol ?? t.name} mcap ${money(t.marketCap)} vol ${money(t.volume24h)} holders ${qty(t.holders)}`,
-          ),
-        ]);
-      }
-      case "arclytics_wallets": {
-        const data = await getWallets(env);
-        const items = (data?.items ?? []) as Array<Record<string, unknown>>;
-        return lines([
-          "Top wallets on Arclytics:",
-          ...items.slice(0, 8).map(
-            (w) => `${w.label || String(w.address).slice(0, 10)} net ${money(w.netWorth)}, 24h txs ${qty(w.txs24h)}`,
-          ),
+          `Live from ${rpcUrl(env)} — chain id ${num(chainId)} (Arc Testnet is 5042002).`,
+          `Head block ${num(blockNumber)} with ${Array.isArray(latest.transactions) ? latest.transactions.length : "—"} txs, ~0.48s block time.`,
+          `Gas price ${gwei.toFixed(2)} Gwei${gwei <= 20.5 ? " — sitting at the 20 Gwei protocol floor" : ""}. Fees are paid in USDC.`,
+          bal != null ? `Balance of ${address}: ${usdc(bal)}.` : null,
         ]);
       }
       case "arc_docs":

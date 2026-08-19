@@ -1,13 +1,20 @@
 type Pt = { date: string; value: number };
+export type Axis = "usd" | "price" | "count";
 
-function money(n: number) {
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
-  if (n >= 1e6) return `$${(n / 1e6).toFixed(2)}M`;
-  if (n >= 1e3) return `$${(n / 1e3).toFixed(1)}K`;
-  return `$${Math.round(n)}`;
+function compact(n: number) {
+  if (n >= 1e9) return `${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(2)}M`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return String(Math.round(n));
 }
 
-export function tvlSvg(title: string, data: Pt[]): string {
+export function axisLabel(n: number, axis: Axis = "usd") {
+  if (axis === "count") return compact(n);
+  if (axis === "price") return n < 1 ? `$${n.toPrecision(3)}` : `$${n.toFixed(n < 1000 ? 2 : 0)}`;
+  return `$${compact(n)}`;
+}
+
+export function metricSvg(title: string, data: Pt[], axis: Axis = "usd"): string {
   const src = data.filter((p) => Number.isFinite(p.value));
   if (src.length < 2) return "";
   const step = Math.max(1, Math.ceil(src.length / 48));
@@ -33,11 +40,11 @@ export function tvlSvg(title: string, data: Pt[]): string {
   const latest = pts[pts.length - 1];
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" role="img">
   <title>${title}</title>
-  <text x="${l}" y="16" font-size="12" font-family="system-ui,sans-serif" fill="#1e1b4b" font-weight="600">${title.replace(/[<>&]/g, "")} · ${money(latest.value)}</text>
+  <text x="${l}" y="16" font-size="12" font-family="system-ui,sans-serif" fill="#1e1b4b" font-weight="600">${title.replace(/[<>&]/g, "")} · ${axisLabel(latest.value, axis)}</text>
   ${ticks
     .map((v) => {
       const yy = y(v);
-      return `<line x1="${l}" x2="${w - r}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#e5e7eb"/><text x="${l - 6}" y="${(yy + 3).toFixed(1)}" text-anchor="end" font-size="9" font-family="system-ui,sans-serif" fill="#64748b">${money(v)}</text>`;
+      return `<line x1="${l}" x2="${w - r}" y1="${yy.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="#e5e7eb"/><text x="${l - 6}" y="${(yy + 3).toFixed(1)}" text-anchor="end" font-size="9" font-family="system-ui,sans-serif" fill="#64748b">${axisLabel(v, axis)}</text>`;
     })
     .join("")}
   <polygon points="${area}" fill="#7c3aed" fill-opacity="0.12"/>

@@ -1,50 +1,50 @@
 import { useEffect, useRef, useState } from "react";
 import { Icons } from "@/components/shared/Icons";
-import { streamAsk, type AskMsg } from "@/libs/ask";
+import { askArclytics, type AskMsg } from "@/libs/ask";
 
 const PROMPTS = [
   {
-    title: "Build the Arc TVL graph",
-    sub: "Show total value locked on Arc Testnet over the last 30 days.",
-    q: "Build the Arc TVL graph",
+    title: "Chart Arc TVL over 90 days",
+    sub: "Plot total value locked across every tracked protocol.",
+    q: "Chart Arc TVL over the last 90 days",
     icon: Icons.Analytics,
     tone: "bg-violet-50 text-violet-600",
   },
   {
-    title: "What's live TVL and 24h transactions on Arc?",
-    sub: "Get current TVL, 24h volume, and transaction count.",
-    q: "What's live TVL and 24h transactions on Arc?",
-    icon: Icons.Activity,
-    tone: "bg-emerald-50 text-emerald-600",
+    title: "Which protocols lead on TVL?",
+    sub: "Rank the ecosystem by live TVL, volume, and fees.",
+    q: "Which protocols lead on TVL right now, and how much volume are they doing?",
+    icon: Icons.Tvl,
+    tone: "bg-indigo-50 text-indigo-600",
   },
   {
-    title: "Look up USDC holders on ArcScan",
-    sub: "Show top USDC holders and their balances.",
-    q: "Look up USDC holders on ArcScan",
-    icon: Icons.Users,
-    tone: "bg-orange-50 text-orange-600",
-  },
-  {
-    title: "Current block height and gas price",
-    sub: "What's the latest block height and gas price on Arc?",
-    q: "Current block height and gas price",
+    title: "How do gas and finality work on Arc?",
+    sub: "USDC as gas, the 20 Gwei floor, sub-second finality.",
+    q: "How do gas fees and finality work on Arc?",
     icon: Icons.Blocks,
     tone: "bg-sky-50 text-sky-600",
   },
   {
-    title: "Top protocols on Arclytics right now",
-    sub: "Rank live TVL, volume, and fees from the backend.",
-    q: "Top protocols on Arclytics right now",
-    icon: Icons.Tvl,
-    tone: "bg-indigo-50 text-indigo-600",
+    title: "Who holds the most USDC?",
+    sub: "Top holders of the native gas token, straight from ArcScan.",
+    q: "Who are the biggest USDC holders on Arc?",
+    icon: Icons.Users,
+    tone: "bg-orange-50 text-orange-600",
+  },
+  {
+    title: "Has volume grown this month?",
+    sub: "Trend 24h volume across the ecosystem from stored history.",
+    q: "How has trading volume trended over the past month?",
+    icon: Icons.Activity,
+    tone: "bg-emerald-50 text-emerald-600",
   },
 ];
 
 const CHIPS = [
-  { label: "TVL & Volume", q: "What's live TVL and 24h volume on Arc?", icon: Icons.Tvl },
-  { label: "Transactions", q: "Show recent transaction activity on Arc", icon: Icons.Tx },
-  { label: "Token Holders", q: "Look up USDC holders on ArcScan", icon: Icons.Users },
-  { label: "Wallet Analysis", q: "Show top wallets on Arclytics right now", icon: Icons.Wallet },
+  { label: "Network now", q: "What's live TVL, 24h volume, and transaction count on Arc?", icon: Icons.Tvl },
+  { label: "Recent activity", q: "What's happening on Arc right now — latest blocks and transactions?", icon: Icons.Tx },
+  { label: "Whale wallets", q: "Show me the biggest wallets on Arc and what they hold", icon: Icons.Wallet },
+  { label: "Bridging", q: "How does bridging USDC to Arc work?", icon: Icons.Users },
 ];
 
 function inline(s: string) {
@@ -140,18 +140,13 @@ export function AskPage() {
     abort.current?.abort();
     abort.current = new AbortController();
     try {
-      await streamAsk(
-        next,
-        (chunk) => {
-          setMsgs((cur) => {
-            const copy = [...cur];
-            const last = copy[copy.length - 1];
-            if (last?.role === "assistant") copy[copy.length - 1] = { ...last, content: last.content + chunk };
-            return copy;
-          });
-        },
-        abort.current.signal,
-      );
+      const reply = await askArclytics(next, abort.current.signal);
+      setMsgs((cur) => {
+        const copy = [...cur];
+        const last = copy[copy.length - 1];
+        if (last?.role === "assistant") copy[copy.length - 1] = { ...last, content: reply };
+        return copy;
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Ask failed";
       setErr(msg);

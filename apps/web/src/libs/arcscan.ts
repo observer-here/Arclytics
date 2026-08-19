@@ -129,3 +129,81 @@ export const arcscan = {
   smartContractCounters: () =>
     get<Record<string, string>>("/smart-contracts/counters"),
 };
+
+export type ProtocolContract = { address: string; label?: string; role?: string };
+
+export type ProtocolLiveTx = {
+  hash: string;
+  method: string;
+  from: string;
+  to: string;
+  timestamp: string;
+  contract: string;
+};
+
+function addrOf(v: unknown) {
+  if (typeof v === "string") return v;
+  return String((v as { hash?: string } | undefined)?.hash ?? "");
+}
+
+function toLiveTx(tx: Record<string, unknown>, contract: string): ProtocolLiveTx {
+  const types = tx.transaction_types as string[] | undefined;
+  return {
+    hash: String(tx.hash ?? ""),
+    method: String(tx.method || types?.[0] || "Tx"),
+    from: addrOf(tx.from),
+    to: addrOf(tx.to),
+    timestamp: String(tx.timestamp ?? ""),
+    contract,
+  };
+}
+
+function uniqueContracts(contracts: ProtocolContract[]) {
+  return [...new Map(contracts.map((c) => [c.address.toLowerCase(), c])).values()];
+}
+
+/** Overview widget: newest txs only, small ArcScan pages. */
+export async function loadProtocolLiveTxs(
+  contracts: ProtocolContract[],
+  limit = 5,
+): Promise<ProtocolLiveTx[]> {
+  const pages = await Promise.all(
+    uniqueContracts(contracts).map(async (c) => {
+      const page = await arcscan
+        .addressTransactions(c.address, { items_count: Math.max(limit, 10) })
+        .catch(() => ({ items: [] as Array<Record<string, unknown>> }));
+      const label = c.label ?? c.role ?? "Contract";
+      return page.items.map((tx) => toLiveTx(tx, label));
+    }),
+  );
+  const seen = new Set<string>();
+  return pages
+    .flat()
+    .filter((tx) => tx.hash && (seen.has(tx.hash) ? false : (seen.add(tx.hash), true)))
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, limit);
+}
+
+/** One ArcScan page per contract. `cursors === null` is the first page. */
+export async function fetchProtocolTxBatch(
+  contracts: ProtocolContract[],
+  cursors: Record<string, PageParams> | null,
+): Promise<{ items: ProtocolLiveTx[]; next: Record<string, PageParams> }> {
+  const targets = uniqueContracts(contracts).filter((c) => {
+    if (!cursors) return true;
+    return Boolean(cursors[c.address.toLowerCase()]);
+  });
+  const next: Record<string, PageParams> = {};
+  const pages = await Promise.all(
+    targets.map(async (c) => {
+      const addr = c.address.toLowerCase();
+      const page = await arcscan
+        .addressTransactions(c.address, cursors?.[addr] ?? null)
+        .catch(() => ({ items: [] as Array<Record<string, unknown>>, nextPageParams: null as PageParams }));
+      if (page.nextPageParams) next[addr] = page.nextPageParams;
+      const label = c.label ?? c.role ?? "Contract";
+      return page.items.map((tx) => toLiveTx(tx, label));
+    }),
+  );
+  return { items: pages.flat(), next };
+}
