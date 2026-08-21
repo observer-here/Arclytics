@@ -1,30 +1,10 @@
-import { getProtocolRankings, getWallets, type ProtocolRanking } from "@/libs/api";
-import { loadAddressDetail, type AddressDetail } from "@/libs/addressDetail";
+import { getWallets } from "@/libs/api";
+import type { ProtocolRanking } from "@/libs/api";
 import type { WalletRow } from "@/libs/wallets";
 
-export type WalletCompareBundle = {
-  wallets: WalletRow[];
-  rankings: ProtocolRanking[];
-};
-
-export async function loadCompareWalletList(): Promise<WalletCompareBundle> {
-  const [feed, rankings] = await Promise.all([
-    getWallets().catch(() => ({ items: [] as WalletRow[] })),
-    getProtocolRankings().catch(() => [] as ProtocolRanking[]),
-  ]);
-  return {
-    wallets: [...(feed.items ?? [])].sort((a, b) => b.netWorth - a.netWorth),
-    rankings,
-  };
-}
-
-export async function loadCompareWalletDetails(
-  addresses: string[],
-): Promise<Record<string, AddressDetail | null>> {
-  const entries = await Promise.all(
-    addresses.map(async (a) => [a.toLowerCase(), await loadAddressDetail(a)] as const),
-  );
-  return Object.fromEntries(entries);
+export async function loadCompareWalletRows(): Promise<WalletRow[]> {
+  const feed = await getWallets().catch(() => ({ items: [] as WalletRow[] }));
+  return [...(feed.items ?? [])].sort((a, b) => b.netWorth - a.netWorth);
 }
 
 export function defaultWalletAddresses(list: WalletRow[]): string[] {

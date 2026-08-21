@@ -79,8 +79,8 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
     return loadNftDashboard();
   },
   [paths.compare]: async () => {
-    const { loadCompareProtocols } = await import("@/libs/compare");
-    return loadCompareProtocols();
+    const { loadDashRankings } = await import("@/libs/dashboard");
+    return loadDashRankings();
   },
   [paths.explorer]: () =>
     arcscan.transactionsPage(null).then((d) => d.items).catch(() => []),
@@ -101,7 +101,7 @@ const cacheKeyByPath: Record<string, string> = {
   [paths.tokens]: "tokens-api-v3",
   [paths.tokensMarketCap]: "tokens-api-v3",
   [paths.nfts]: "nfts-dashboard-v1",
-  [paths.compare]: "compare-v2",
+  [paths.compare]: DASH.rankings,
   [paths.explorer]: "transactions",
   [paths.blocks]: "blocks",
   [paths.transactions]: "transactions",

@@ -3,21 +3,33 @@ import { Link } from "react-router-dom";
 import { DonutChart } from "@/components/charts/Charts";
 import { Icons } from "@/components/shared/Icons";
 import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
+import { ChartSkel, Skel } from "@/components/shared/Skel";
 import { TokenIcon } from "@/components/shared/TokenIcon";
 import { ADDR_RE } from "@/config/wallets";
 import { useAsyncData } from "@/hooks/useAsyncData";
-import type { AddressDetail } from "@/libs/addressDetail";
+import { useProgressiveMap } from "@/hooks/useProgressiveMap";
+import {
+  loadAddressBalanceSeries,
+  loadAddressNftList,
+  loadAddressProfile,
+  loadAddressTokenList,
+  loadAddressTransferList,
+  loadAddressTxList,
+  portfolioSlices,
+  type AddressTx,
+} from "@/libs/addressDetail";
 import {
   defaultWalletAddresses,
-  loadCompareWalletDetails,
-  loadCompareWalletList,
+  loadCompareWalletRows,
   protocolFor,
 } from "@/libs/compareWallets";
+import { loadDashRankings } from "@/libs/dashboard";
+import { DASH } from "@/libs/prefetch";
 import type { WalletRow } from "@/libs/wallets";
 import { paths } from "@/routes/paths";
 import { compact, pct, shortHash, usd } from "@/utils/format";
 
-const CACHE = "compare-wallets-v1";
+const CACHE = "compare-wallets-v2";
 const COLORS = ["#8b5cf6", "#3b82f6", "#06b6d4", "#f59e0b"];
 const DONUT = ["#8b5cf6", "#3b82f6", "#10b981", "#f97316", "#94a3b8"];
 const MAX = 4;
@@ -47,22 +59,22 @@ function letter(addr: string) {
   return addr.slice(2, 4).toUpperCase();
 }
 
-function daysOf(d: AddressDetail) {
-  return new Set(d.txs.map((t) => t.timestamp?.slice(0, 10)).filter(Boolean)).size;
+function daysOf(txs: AddressTx[]) {
+  return new Set(txs.map((t) => t.timestamp?.slice(0, 10)).filter(Boolean)).size;
 }
 
-function flow(d: AddressDetail) {
+function flow(txs: AddressTx[]) {
   let inflow = 0;
   let outflow = 0;
   let fees = 0;
   let ok = 0;
-  for (const t of d.txs) {
+  for (const t of txs) {
     if (t.direction === "in") inflow += t.valueUsdc;
     if (t.direction === "out") outflow += t.valueUsdc;
     fees += t.feeUsdc;
     if (t.ok !== false) ok += 1;
   }
-  const n = d.txs.length || 1;
+  const n = txs.length || 1;
   return {
     inflow,
     outflow,
@@ -73,40 +85,36 @@ function flow(d: AddressDetail) {
   };
 }
 
-function pnl(d: AddressDetail, row?: WalletRow) {
-  const s = d.balanceSeries;
-  if (s.length >= 2) {
-    const a = s[0].value;
-    const b = s[s.length - 1].value;
+function pnl(
+  balanceSeries: Array<{ date: string; value: number }>,
+  netWorth: number,
+  row?: WalletRow,
+) {
+  if (balanceSeries.length >= 2) {
+    const a = balanceSeries[0].value;
+    const b = balanceSeries[balanceSeries.length - 1].value;
     return { usd: b - a, pct: a > 0 ? ((b - a) / a) * 100 : 0 };
   }
   const ch = row?.change7d ?? row?.change24h;
-  if (ch != null) return { usd: (d.netWorth * ch) / 100, pct: ch };
+  if (ch != null) return { usd: (netWorth * ch) / 100, pct: ch };
   return { usd: 0, pct: 0 };
-}
-
-function slices(d: AddressDetail) {
-  const native = { label: "USDC", value: d.nativeUsdc };
-  const top = d.tokens.slice(0, 4).map((t) => ({ label: t.symbol || "Token", value: t.valueUsd }));
-  const used = new Set(top.map((t) => t.label));
-  const rest = d.tokens
-    .filter((t) => !used.has(t.symbol))
-    .reduce((s, t) => s + t.valueUsd, 0);
-  const out = [native, ...top];
-  if (rest > 0) out.push({ label: "Other", value: rest });
-  return out.filter((s) => s.value > 0);
 }
 
 function MiniLine({
   title,
   series,
+  loading = false,
 }: {
   title: string;
   series: Array<{ label: string; color: string; data: Point[] }>;
+  loading?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [range, setRange] = useState<ChartRange>("30D");
   const [tip, setTip] = useState<{ i: number; x: number; y: number } | null>(null);
+
+  if (loading) return <ChartSkel title={title} kind="area" />;
+
   const sliced = series.map((s) => ({ ...s, data: slicePts(s.data, range) }));
   const dates = [...new Set(sliced.flatMap((s) => s.data.map((d) => d.date)))].sort();
   const aligned = sliced.map((s) => {
@@ -235,57 +243,95 @@ function MiniLine({
 }
 
 export function WalletCompare() {
-  const { data, loading, error } = useAsyncData(CACHE, loadCompareWalletList);
+  const walletsQ = useAsyncData(CACHE, loadCompareWalletRows);
+  const rankingsQ = useAsyncData(DASH.rankings, loadDashRankings);
   const [selected, setSelected] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [details, setDetails] = useState<Record<string, AddressDetail | null>>({});
-  const [busy, setBusy] = useState(false);
   const [sub, setSub] = useState<Sub>("Portfolio");
 
   useEffect(() => {
-    if (!data?.wallets.length || selected.length) return;
-    setSelected(defaultWalletAddresses(data.wallets));
-  }, [data, selected.length]);
+    if (!walletsQ.data?.length || selected.length) return;
+    setSelected(defaultWalletAddresses(walletsQ.data));
+  }, [walletsQ.data, selected.length]);
 
-  useEffect(() => {
-    if (!selected.length) {
-      setDetails({});
-      return;
-    }
-    let alive = true;
-    setBusy(true);
-    loadCompareWalletDetails(selected)
-      .then((d) => {
-        if (alive) setDetails(d);
-      })
-      .finally(() => {
-        if (alive) setBusy(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [selected]);
+  const keys = useMemo(() => selected.map((a) => a.toLowerCase()), [selected]);
 
-  const list = data?.wallets ?? [];
-  const rankings = data?.rankings ?? [];
+  const profiles = useProgressiveMap(keys, loadAddressProfile);
+  const tokenLists = useProgressiveMap(keys, loadAddressTokenList);
+  const nftLists = useProgressiveMap(keys, loadAddressNftList);
+  const txLists = useProgressiveMap(keys, loadAddressTxList);
+  const transferLists = useProgressiveMap(keys, loadAddressTransferList);
+  const balanceSeries = useProgressiveMap(keys, loadAddressBalanceSeries);
+
+  const list = walletsQ.data ?? [];
+  const rankings = rankingsQ.data ?? [];
+  const listLoading = walletsQ.loading && !list.length;
 
   const items = useMemo(() => {
     return selected.map((a, i) => {
       const addr = a.toLowerCase();
       const row = list.find((w) => w.address.toLowerCase() === addr);
-      const d = details[addr];
+      const profile = addr in profiles.data ? profiles.data[addr] : undefined;
+      const tokens = addr in tokenLists.data ? tokenLists.data[addr] ?? [] : undefined;
+      const nfts = addr in nftLists.data ? nftLists.data[addr] ?? [] : undefined;
+      const txs = addr in txLists.data ? txLists.data[addr] ?? [] : undefined;
+      const transfers =
+        addr in transferLists.data ? transferLists.data[addr] ?? [] : undefined;
+      const series =
+        addr in balanceSeries.data ? balanceSeries.data[addr] ?? [] : undefined;
+
+      const profilePending = Boolean(profiles.pending[addr]) || !(addr in profiles.data);
+      const tokensPending = Boolean(tokenLists.pending[addr]) || !(addr in tokenLists.data);
+      const nftsPending = Boolean(nftLists.pending[addr]) || !(addr in nftLists.data);
+      const txsPending = Boolean(txLists.pending[addr]) || !(addr in txLists.data);
+      const seriesPending =
+        Boolean(balanceSeries.pending[addr]) || !(addr in balanceSeries.data);
+
+      const nativeUsdc = profile?.nativeUsdc ?? 0;
+      const tokenValueUsd = (tokens ?? []).reduce((s, t) => s + t.valueUsd, 0);
+      const netWorth =
+        profile || tokens
+          ? nativeUsdc + tokenValueUsd
+          : (row?.netWorth ?? 0);
+      const txCount = profile?.txCount ?? txs?.length ?? 0;
+
       return {
         address: addr,
-        label: row?.name || row?.label || `Wallet ${String.fromCharCode(65 + i)}`,
+        label: row?.name || row?.label || profile?.name || `Wallet ${String.fromCharCode(65 + i)}`,
         row,
-        d,
         color: COLORS[i % COLORS.length],
+        profile,
+        tokens: tokens ?? [],
+        nfts: nfts ?? [],
+        txs: txs ?? [],
+        transfers: transfers ?? [],
+        series: series ?? [],
+        nativeUsdc,
+        tokenValueUsd,
+        netWorth,
+        txCount,
+        profilePending,
+        tokensPending,
+        nftsPending,
+        txsPending,
+        seriesPending,
+        valuePending: profilePending && tokensPending && !row,
+        anyPending:
+          profilePending || tokensPending || nftsPending || txsPending || seriesPending,
+        donut: portfolioSlices(nativeUsdc, tokens ?? [], nfts ?? []),
       };
     });
-  }, [selected, list, details]);
-
-  const ready = items.filter((w) => w.d);
+  }, [
+    selected,
+    list,
+    profiles,
+    tokenLists,
+    nftLists,
+    txLists,
+    transferLists,
+    balanceSeries,
+  ]);
 
   const available = useMemo(() => {
     const set = new Set(selected.map((a) => a.toLowerCase()));
@@ -300,18 +346,31 @@ export function WalletCompare() {
   const stats = useMemo(
     () =>
       items.map((w) => {
-        if (!w.d) return null;
-        const f = flow(w.d);
-        const p = pnl(w.d, w.row);
-        return { ...f, pnl: p, days: daysOf(w.d), txs: w.d.txCount || w.d.txs.length };
+        if (w.txsPending && !w.txs.length && w.seriesPending) return null;
+        const f = flow(w.txs);
+        const p = pnl(w.series, w.netWorth, w.row);
+        return {
+          ...f,
+          pnl: p,
+          days: daysOf(w.txs),
+          txs: w.txCount || w.txs.length,
+          ready: !w.txsPending || w.txs.length > 0,
+          valueReady: !w.valuePending,
+          seriesReady: !w.seriesPending || w.series.length >= 2,
+        };
       }),
     [items],
   );
 
+  const portfolioReady = items.some((w) => w.series.length >= 2);
+  const portfolioPending = items.some((w) => w.seriesPending);
+  const txsReady = items.some((w) => w.txs.length > 0);
+  const txsPending = items.some((w) => w.txsPending);
+
   const protocols = useMemo(() => {
     const map = new Map<string, { name: string; slug: string; txs: number[]; vol: number[] }>();
     items.forEach((w, i) => {
-      for (const tx of w.d?.txs ?? []) {
+      for (const tx of w.txs) {
         const p = protocolFor(tx.to, rankings) ?? protocolFor(tx.from, rankings);
         if (!p) continue;
         const cur = map.get(p.slug) ?? {
@@ -325,13 +384,19 @@ export function WalletCompare() {
         map.set(p.slug, cur);
       }
     });
-    return [...map.values()].sort((a, b) => b.vol.reduce((s, n) => s + n, 0) - a.vol.reduce((s, n) => s + n, 0)).slice(0, 8);
+    return [...map.values()]
+      .sort(
+        (a, b) =>
+          b.vol.reduce((s, n) => s + n, 0) - a.vol.reduce((s, n) => s + n, 0),
+      )
+      .slice(0, 8);
   }, [items, rankings]);
 
   const insights = useMemo(() => {
-    if (ready.length < 2 || !ready[0].d || !ready[1].d) return [];
-    const a = ready[0].d;
-    const b = ready[1].d;
+    const ready = items.filter((w) => !w.valuePending);
+    if (ready.length < 2) return [];
+    const a = ready[0];
+    const b = ready[1];
     const out: string[] = [];
     if (b.netWorth > 0) {
       const g = ((a.netWorth - b.netWorth) / b.netWorth) * 100;
@@ -347,23 +412,23 @@ export function WalletCompare() {
         : `${shortHash(b.address)} is more active (${compact(b.txCount)} txs).`,
     );
     out.push(
-      a.nftCount >= b.nftCount
-        ? `${shortHash(a.address)} holds more NFTs (${a.nftCount}).`
-        : `${shortHash(b.address)} holds more NFTs (${b.nftCount}).`,
+      a.nfts.length >= b.nfts.length
+        ? `${shortHash(a.address)} holds more NFTs (${a.nfts.length}).`
+        : `${shortHash(b.address)} holds more NFTs (${b.nfts.length}).`,
     );
-    const fa = flow(a);
-    const fb = flow(b);
+    const fa = flow(a.txs);
+    const fb = flow(b.txs);
     out.push(
       fa.fees >= fb.fees
         ? `${shortHash(a.address)} spent more gas (${usd(fa.fees)}).`
         : `${shortHash(b.address)} spent more gas (${usd(fb.fees)}).`,
     );
     return out;
-  }, [ready]);
+  }, [items]);
 
   const activity = useMemo(() => {
     const rows = items.flatMap((w, i) =>
-      (w.d?.txs ?? []).map((t) => ({
+      w.txs.map((t) => ({
         ...t,
         token: "USDC",
         color: COLORS[i % COLORS.length],
@@ -376,14 +441,46 @@ export function WalletCompare() {
 
   const add = (addr: string) => {
     const a = addr.toLowerCase();
-    if (!ADDR_RE.test(a) || selected.length >= MAX || selected.some((x) => x.toLowerCase() === a)) return;
+    if (!ADDR_RE.test(a) || selected.length >= MAX || selected.some((x) => x.toLowerCase() === a))
+      return;
     setSelected((s) => [...s, a]);
     setPickerOpen(false);
     setQuery("");
   };
 
-  if (loading) return <div className="text-sm text-ink-400">Loading wallets…</div>;
-  if (error) return <div className="text-sm text-ink-400">{error}</div>;
+  if (listLoading) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex">
+          {[0, 1].map((i) => (
+            <div key={i} className="flex flex-1 items-center gap-2 rounded-xl border border-ink-100 px-2.5 py-2">
+              <Skel className="h-7 w-7 rounded-full" />
+              <div className="flex-1 space-y-1">
+                <Skel className="h-3 w-20" />
+                <Skel className="h-2.5 w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {[0, 1].map((i) => (
+            <div key={i} className="card space-y-2 p-2">
+              <Skel className="h-3 w-16" />
+              <div className="grid grid-cols-2 gap-2">
+                {[0, 1, 2, 3].map((j) => (
+                  <div key={j} className="space-y-1">
+                    <Skel className="h-2.5 w-14" />
+                    <Skel className="h-4 w-16" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <ChartSkel title="Portfolio Value Over Time" kind="area" />
+      </div>
+    );
+  }
 
   const pack = [
     { label: "Total Inflow (30D)", icon: <Icons.Volume size={12} />, color: "#10b981", key: "inflow" as const, fmt: usd },
@@ -420,6 +517,7 @@ export function WalletCompare() {
                   {shortHash(w.address)}
                 </Link>
               </div>
+              {w.anyPending && <Skel className="h-2.5 w-2.5 rounded-full" />}
               <button
                 type="button"
                 onClick={() => setSelected((s) => s.filter((x) => x.toLowerCase() !== w.address))}
@@ -480,8 +578,6 @@ export function WalletCompare() {
         )}
       </div>
 
-      {busy && <div className="text-[10px] text-ink-400">Loading wallet detail…</div>}
-
       <div
         className="grid gap-2"
         style={{ gridTemplateColumns: `repeat(${Math.max(items.length + (items.length === 2 ? 1 : 0), 1)}, minmax(0,1fr))` }}
@@ -497,33 +593,53 @@ export function WalletCompare() {
               <div className="grid grid-cols-2 gap-1.5 text-[11px]">
                 <div>
                   <div className="text-[10px] text-ink-400">Portfolio Value</div>
-                  <div className="font-semibold text-ink-900">{w.d ? usd(w.d.netWorth) : "—"}</div>
+                  {w.valuePending ? (
+                    <Skel className="mt-0.5 h-4 w-16" />
+                  ) : (
+                    <div className="font-semibold text-ink-900">{usd(w.netWorth)}</div>
+                  )}
                 </div>
                 <div>
                   <div className="text-[10px] text-ink-400">Total PnL</div>
-                  <div className={`font-semibold ${(s?.pnl.pct ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                    {s ? `${usd(s.pnl.usd)} ${pct(s.pnl.pct)}` : "—"}
-                  </div>
+                  {w.seriesPending && !s ? (
+                    <Skel className="mt-0.5 h-4 w-16" />
+                  ) : (
+                    <div
+                      className={`font-semibold ${
+                        (s?.pnl.pct ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+                      }`}
+                    >
+                      {s ? `${usd(s.pnl.usd)} ${pct(s.pnl.pct)}` : "—"}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className="text-[10px] text-ink-400">Transactions</div>
-                  <div className="font-semibold text-ink-900">{s ? compact(s.txs) : "—"}</div>
+                  {w.profilePending && w.txsPending ? (
+                    <Skel className="mt-0.5 h-4 w-12" />
+                  ) : (
+                    <div className="font-semibold text-ink-900">{compact(w.txCount)}</div>
+                  )}
                 </div>
                 <div>
                   <div className="text-[10px] text-ink-400">Active Days</div>
-                  <div className="font-semibold text-ink-900">{s ? s.days : "—"}</div>
+                  {w.txsPending ? (
+                    <Skel className="mt-0.5 h-4 w-10" />
+                  ) : (
+                    <div className="font-semibold text-ink-900">{s ? s.days : "—"}</div>
+                  )}
                 </div>
               </div>
             </div>
           );
         })}
-        {items.length === 2 && stats[0] && stats[1] && (
+        {items.length === 2 && stats[0] && stats[1] && !items[0].valuePending && !items[1].valuePending && (
           <div className="card p-2">
             <div className="mb-1.5 text-[11px] font-semibold text-ink-800">Difference</div>
             <div className="grid grid-cols-2 gap-1.5 text-[11px]">
               {(
                 [
-                  ["Portfolio Value", (items[0].d?.netWorth ?? 0) - (items[1].d?.netWorth ?? 0), usd],
+                  ["Portfolio Value", items[0].netWorth - items[1].netWorth, usd],
                   ["Total PnL", stats[0].pnl.usd - stats[1].pnl.usd, usd],
                   ["Transactions", stats[0].txs - stats[1].txs, compact],
                   ["Active Days", stats[0].days - stats[1].days, (n: number) => String(n)],
@@ -561,17 +677,28 @@ export function WalletCompare() {
         <div className="grid items-stretch gap-2 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
           <MiniLine
             title="Portfolio Value Over Time"
+            loading={portfolioPending && !portfolioReady}
             series={items.map((w) => ({
               label: shortHash(w.address),
               color: w.color,
-              data: w.d?.balanceSeries ?? [],
+              data: w.series,
             }))}
           />
           <div className="grid gap-2 sm:grid-cols-2">
             {items.map((w) => (
               <div key={w.address} className="card p-2">
                 <div className="panel-title mb-1">Asset Distribution</div>
-                <DonutChart title="Assets" slices={w.d ? slices(w.d) : []} colors={DONUT} bare />
+                {w.profilePending && w.tokensPending ? (
+                  <div className="flex items-center gap-3 py-2">
+                    <Skel className="h-20 w-20 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <Skel className="h-3 w-full" />
+                      <Skel className="h-3 w-4/5" />
+                    </div>
+                  </div>
+                ) : (
+                  <DonutChart title="Assets" slices={w.donut} colors={DONUT} bare />
+                )}
               </div>
             ))}
           </div>
@@ -589,20 +716,30 @@ export function WalletCompare() {
                 {p.icon}
               </div>
               <div className="text-[10px] text-ink-400">{p.label}</div>
-              <div className="text-[13px] font-semibold text-ink-900">
-                {(() => {
-                  const live = stats.filter(Boolean);
-                  const sum = live.reduce((s, x) => s + (x?.[p.key] ?? 0), 0);
-                  const n = Math.max(live.length, 1);
-                  return p.fmt(p.key === "avg" || p.key === "success" ? sum / n : sum);
-                })()}
-              </div>
+              {txsPending && !txsReady ? (
+                <Skel className="mt-1 h-4 w-16" />
+              ) : (
+                <div className="text-[13px] font-semibold text-ink-900">
+                  {(() => {
+                    const live = stats.filter(Boolean);
+                    const sum = live.reduce((s, x) => s + (x?.[p.key] ?? 0), 0);
+                    const n = Math.max(live.length, 1);
+                    return p.fmt(p.key === "avg" || p.key === "success" ? sum / n : sum);
+                  })()}
+                </div>
+              )}
               <div className="mt-1 space-y-0.5 text-[10px]">
                 {items.map((w, i) => (
                   <div key={w.address} className="flex justify-between text-ink-500">
                     <span className="truncate">{shortHash(w.address)}</span>
                     <span className="font-medium text-ink-800">
-                      {stats[i] ? p.fmt(stats[i]![p.key]) : "—"}
+                      {w.txsPending && !w.txs.length ? (
+                        <Skel className="h-2.5 w-10" />
+                      ) : stats[i] ? (
+                        p.fmt(stats[i]![p.key])
+                      ) : (
+                        "—"
+                      )}
                     </span>
                   </div>
                 ))}
@@ -620,19 +757,29 @@ export function WalletCompare() {
               {items.map((w) => (
                 <div key={w.address} className="space-y-1.5">
                   <div className="text-[10px] font-medium text-ink-400">{shortHash(w.address)}</div>
-                  {(w.d?.tokens ?? []).slice(0, 5).map((t) => (
-                    <div key={t.address} className="flex items-center gap-1.5 text-[11px]">
-                      <TokenIcon address={t.address} src={t.iconUrl} symbol={t.symbol} size={14} />
-                      <span className="min-w-0 flex-1 truncate font-medium text-ink-800">{t.symbol}</span>
-                      <span className="text-right">
-                        <span className="block font-medium">{usd(t.valueUsd)}</span>
-                        <span className="text-[9px] text-ink-400">
-                          {w.d && w.d.netWorth > 0 ? `${((t.valueUsd / w.d.netWorth) * 100).toFixed(1)}%` : "—"}
-                        </span>
-                      </span>
+                  {w.tokensPending && !w.tokens.length ? (
+                    <div className="space-y-1.5">
+                      {[0, 1, 2].map((i) => (
+                        <Skel key={i} className="h-4 w-full" />
+                      ))}
                     </div>
-                  ))}
-                  {!w.d?.tokens.length && <div className="text-[10px] text-ink-400">No tokens</div>}
+                  ) : (
+                    <>
+                      {w.tokens.slice(0, 5).map((t) => (
+                        <div key={t.address} className="flex items-center gap-1.5 text-[11px]">
+                          <TokenIcon address={t.address} src={t.iconUrl} symbol={t.symbol} size={14} />
+                          <span className="min-w-0 flex-1 truncate font-medium text-ink-800">{t.symbol}</span>
+                          <span className="text-right">
+                            <span className="block font-medium">{usd(t.valueUsd)}</span>
+                            <span className="text-[9px] text-ink-400">
+                              {w.netWorth > 0 ? `${((t.valueUsd / w.netWorth) * 100).toFixed(1)}%` : "—"}
+                            </span>
+                          </span>
+                        </div>
+                      ))}
+                      {!w.tokens.length && <div className="text-[10px] text-ink-400">No tokens</div>}
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -688,13 +835,23 @@ export function WalletCompare() {
               {items.map((w) => (
                 <div key={w.address} className="space-y-1.5">
                   <div className="text-[10px] font-medium text-ink-400">{shortHash(w.address)}</div>
-                  {(w.d?.nfts ?? []).slice(0, 5).map((n) => (
-                    <div key={n.address} className="flex items-center justify-between gap-1 text-[11px]">
-                      <span className="truncate font-medium text-ink-800">{n.name || n.symbol || "NFT"}</span>
-                      <span className="text-ink-500">×{n.count}</span>
+                  {w.nftsPending && !w.nfts.length ? (
+                    <div className="space-y-1.5">
+                      {[0, 1, 2].map((i) => (
+                        <Skel key={i} className="h-4 w-full" />
+                      ))}
                     </div>
-                  ))}
-                  {!w.d?.nfts.length && <div className="text-[10px] text-ink-400">No NFTs</div>}
+                  ) : (
+                    <>
+                      {w.nfts.slice(0, 5).map((n) => (
+                        <div key={n.address} className="flex items-center justify-between gap-1 text-[11px]">
+                          <span className="truncate font-medium text-ink-800">{n.name || n.symbol || "NFT"}</span>
+                          <span className="text-ink-500">×{n.count}</span>
+                        </div>
+                      ))}
+                      {!w.nfts.length && <div className="text-[10px] text-ink-400">No NFTs</div>}
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -716,47 +873,62 @@ export function WalletCompare() {
 
       {(sub === "Activity" || sub === "Transactions") && (
         <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-[11px]">
-              <thead>
-                <tr className="border-b border-ink-100 text-[10px] text-ink-400">
-                  <th className="px-2 py-1.5 font-medium">Time</th>
-                  <th className="px-2 py-1.5 font-medium">Wallet</th>
-                  <th className="px-2 py-1.5 font-medium">Method</th>
-                  <th className="px-2 py-1.5 font-medium">From</th>
-                  <th className="px-2 py-1.5 font-medium">To</th>
-                  <th className="px-2 py-1.5 text-right font-medium">Value</th>
-                  <th className="px-2 py-1.5 font-medium">Tx</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activity.map((t, i) => (
-                  <tr key={`${t.hash}-${i}`} className="border-b border-ink-50">
-                    <td className="px-2 py-1.5 text-ink-500">
-                      {t.timestamp ? new Date(t.timestamp).toLocaleString() : "—"}
-                    </td>
-                    <td className="px-2 py-1.5 font-medium" style={{ color: t.color }}>
-                      {t.wallet}
-                    </td>
-                    <td className="px-2 py-1.5">{t.method}</td>
-                    <td className="px-2 py-1.5 font-mono text-[10px]">{shortHash(t.from)}</td>
-                    <td className="px-2 py-1.5 font-mono text-[10px]">{shortHash(t.to)}</td>
-                    <td className="px-2 py-1.5 text-right">{usd(t.valueUsdc)}</td>
-                    <td className="px-2 py-1.5">
-                      <a
-                        href={`https://testnet.arcscan.app/tx/${t.hash}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-mono text-[10px] text-arc-600"
-                      >
-                        {shortHash(t.hash)}
-                      </a>
-                    </td>
+          {txsPending && !txsReady ? (
+            <div className="space-y-2 p-2">
+              {Array.from({ length: 6 }, (_, i) => (
+                <Skel key={i} className="h-4 w-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-[11px]">
+                <thead>
+                  <tr className="border-b border-ink-100 text-[10px] text-ink-400">
+                    <th className="px-2 py-1.5 font-medium">Time</th>
+                    <th className="px-2 py-1.5 font-medium">Wallet</th>
+                    <th className="px-2 py-1.5 font-medium">Method</th>
+                    <th className="px-2 py-1.5 font-medium">From</th>
+                    <th className="px-2 py-1.5 font-medium">To</th>
+                    <th className="px-2 py-1.5 text-right font-medium">Value</th>
+                    <th className="px-2 py-1.5 font-medium">Tx</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {activity.map((t, i) => (
+                    <tr key={`${t.hash}-${i}`} className="border-b border-ink-50">
+                      <td className="px-2 py-1.5 text-ink-500">
+                        {t.timestamp ? new Date(t.timestamp).toLocaleString() : "—"}
+                      </td>
+                      <td className="px-2 py-1.5 font-medium" style={{ color: t.color }}>
+                        {t.wallet}
+                      </td>
+                      <td className="px-2 py-1.5">{t.method}</td>
+                      <td className="px-2 py-1.5 font-mono text-[10px]">{shortHash(t.from)}</td>
+                      <td className="px-2 py-1.5 font-mono text-[10px]">{shortHash(t.to)}</td>
+                      <td className="px-2 py-1.5 text-right">{usd(t.valueUsdc)}</td>
+                      <td className="px-2 py-1.5">
+                        <a
+                          href={`https://testnet.arcscan.app/tx/${t.hash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-[10px] text-arc-600"
+                        >
+                          {shortHash(t.hash)}
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                  {!activity.length && (
+                    <tr>
+                      <td colSpan={7} className="px-2 py-4 text-center text-ink-400">
+                        No recent transactions
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
@@ -777,7 +949,7 @@ export function WalletCompare() {
               <tbody>
                 {[
                   ...new Map(
-                    items.flatMap((w) => (w.d?.tokens ?? []).map((t) => [t.address, t] as const)),
+                    items.flatMap((w) => w.tokens.map((t) => [t.address, t] as const)),
                   ).values(),
                 ]
                   .slice(0, 20)
@@ -790,10 +962,16 @@ export function WalletCompare() {
                         </span>
                       </td>
                       {items.map((w) => {
-                        const hit = w.d?.tokens.find((x) => x.address === t.address);
+                        const hit = w.tokens.find((x) => x.address === t.address);
                         return (
                           <td key={w.address} className="px-2 py-1.5 text-right">
-                            {hit ? usd(hit.valueUsd) : "—"}
+                            {w.tokensPending && !w.tokens.length ? (
+                              <Skel className="ml-auto h-3 w-10" />
+                            ) : hit ? (
+                              usd(hit.valueUsd)
+                            ) : (
+                              "—"
+                            )}
                           </td>
                         );
                       })}
@@ -811,13 +989,23 @@ export function WalletCompare() {
             <div key={w.address} className="card p-2">
               <div className="panel-title mb-1.5">{shortHash(w.address)}</div>
               <div className="space-y-1.5">
-                {(w.d?.nfts ?? []).slice(0, 12).map((n) => (
-                  <div key={n.address} className="flex justify-between text-[11px]">
-                    <span className="truncate font-medium">{n.name || n.symbol}</span>
-                    <span className="text-ink-500">×{n.count}</span>
+                {w.nftsPending && !w.nfts.length ? (
+                  <div className="space-y-1.5">
+                    {[0, 1, 2].map((i) => (
+                      <Skel key={i} className="h-4 w-full" />
+                    ))}
                   </div>
-                ))}
-                {!w.d?.nfts.length && <div className="text-[11px] text-ink-400">No NFTs</div>}
+                ) : (
+                  <>
+                    {w.nfts.slice(0, 12).map((n) => (
+                      <div key={n.address} className="flex justify-between text-[11px]">
+                        <span className="truncate font-medium">{n.name || n.symbol}</span>
+                        <span className="text-ink-500">×{n.count}</span>
+                      </div>
+                    ))}
+                    {!w.nfts.length && <div className="text-[11px] text-ink-400">No NFTs</div>}
+                  </>
+                )}
               </div>
             </div>
           ))}

@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ProtocolIcon } from "@/components/shared/ProtocolIcon";
+import { ChartSkel, Skel } from "@/components/shared/Skel";
 import { CATEGORY_LABELS, type ProtocolCategoryFilter } from "@/config/categories";
 import { useAsyncData } from "@/hooks/useAsyncData";
+import { useProgressiveMap } from "@/hooks/useProgressiveMap";
 import type { ProtocolDetail, ProtocolRanking } from "@/libs/api";
-import { loadCompareDetails, loadCompareProtocols } from "@/libs/compare";
+import { loadCompareProtocolDetail } from "@/libs/compare";
+import { loadDashRankings } from "@/libs/dashboard";
+import { DASH } from "@/libs/prefetch";
 import { paths } from "@/routes/paths";
 import { compact, pct, usd } from "@/utils/format";
 import { TokenCompare } from "./TokenCompare";
 import { WalletCompare } from "./WalletCompare";
 
-const CACHE = "compare-v2";
 const TABS = ["Protocols", "Tokens", "Chains", "Wallets", "Categories"] as const;
 const CHART_RANGES = ["7D", "30D", "90D", "1Y"] as const;
 const COLORS = ["#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b"];
@@ -68,10 +71,12 @@ function CompareLine({
   title,
   series,
   format = compact,
+  loading = false,
 }: {
   title: string;
   series: Array<{ label: string; color: string; data: Point[] }>;
   format?: (n: number) => string;
+  loading?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [range, setRange] = useState<ChartRange>("30D");
@@ -80,6 +85,8 @@ function CompareLine({
     x: number;
     y: number;
   } | null>(null);
+
+  if (loading) return <ChartSkel title={title} kind="area" />;
 
   const sliced = series.map((s) => ({ ...s, data: slicePts(s.data, range) }));
   const dates = (() => {
@@ -266,12 +273,16 @@ function CompareLine({
 
 function MarketShareChart({
   series,
+  loading = false,
 }: {
   series: Array<{ label: string; color: string; data: Point[] }>;
+  loading?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [range, setRange] = useState<ChartRange>("30D");
   const [tip, setTip] = useState<{ i: number; x: number; y: number } | null>(null);
+
+  if (loading) return <ChartSkel title="Market Share" kind="area" />;
 
   const sliced = series.map((s) => ({ ...s, data: slicePts(s.data, range) }));
   const dates = (() => {
@@ -435,37 +446,58 @@ function MarketShareChart({
   );
 }
 
+function SelectSkel() {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+      {[0, 1].map((i) => (
+        <div key={i} className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-ink-100 px-2.5 py-2">
+          <Skel className="h-6 w-6 rounded" />
+          <div className="min-w-0 flex-1 space-y-1">
+            <Skel className="h-3 w-20" />
+            <Skel className="h-2.5 w-14" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MetricsSkel() {
+  return (
+    <div className="card overflow-hidden p-2">
+      <div className="mb-2 flex gap-2">
+        <Skel className="h-3 w-16" />
+        <Skel className="h-3 w-16" />
+        <Skel className="h-3 w-16" />
+      </div>
+      <div className="space-y-2">
+        {Array.from({ length: 8 }, (_, i) => (
+          <div key={i} className="flex gap-2">
+            <Skel className="h-3 w-24" />
+            <Skel className="h-3 flex-1" />
+            <Skel className="h-3 flex-1" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ComparePage() {
-  const { data: rankings, loading, error } = useAsyncData(CACHE, loadCompareProtocols);
+  const { data: rankings, loading: listLoading } = useAsyncData(DASH.rankings, loadDashRankings);
   const [tab, setTab] = useState<Tab>("Protocols");
   const [selected, setSelected] = useState<string[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [details, setDetails] = useState<Record<string, ProtocolDetail | null>>({});
-  const [detailsLoading, setDetailsLoading] = useState(false);
 
   useEffect(() => {
     if (!rankings?.length || selected.length) return;
     setSelected(rankings.slice(0, 2).map((r) => r.slug));
   }, [rankings, selected.length]);
 
-  useEffect(() => {
-    if (!selected.length) {
-      setDetails({});
-      return;
-    }
-    let alive = true;
-    setDetailsLoading(true);
-    loadCompareDetails(selected)
-      .then((d) => {
-        if (alive) setDetails(d);
-      })
-      .finally(() => {
-        if (alive) setDetailsLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [selected]);
+  const {
+    data: details,
+    pending,
+  } = useProgressiveMap(selected, loadCompareProtocolDetail);
 
   const items = useMemo(() => {
     if (!rankings) return [] as ProtocolRanking[];
@@ -478,6 +510,8 @@ export function ComparePage() {
     if (!rankings) return [];
     return rankings.filter((r) => !selected.includes(r.slug));
   }, [rankings, selected]);
+
+  const chartsBoot = listLoading && !items.length;
 
   const metrics = useMemo(() => {
     if (items.length < 1) return [];
@@ -608,9 +642,6 @@ export function ComparePage() {
     setPickerOpen(false);
   };
 
-  if (loading) return <div className="text-sm text-ink-400">Loading compare…</div>;
-  if (error) return <div className="text-sm text-ink-400">{error}</div>;
-
   return (
     <div className="space-y-2">
       <div className="no-scrollbar flex gap-1 overflow-x-auto border-b border-ink-100 pb-1">
@@ -636,6 +667,16 @@ export function ComparePage() {
         <div className="card p-4 text-[12px] text-ink-500">
           {tab} compare is next — Protocols, Tokens and Wallets are live.
         </div>
+      ) : listLoading && !rankings?.length ? (
+        <>
+          <SelectSkel />
+          <MetricsSkel />
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {["TVL", "Volume", "Fees", "Users", "Transactions", "Market Share"].map((t) => (
+              <ChartSkel key={t} title={t} kind="area" />
+            ))}
+          </div>
+        </>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
@@ -706,88 +747,89 @@ export function ComparePage() {
             )}
           </div>
 
-          {detailsLoading && items.length > 0 && (
-            <div className="text-[10px] text-ink-400">Loading protocol detail…</div>
-          )}
-
-          <div className="card overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-[11px]">
-                <thead>
-                  <tr className="border-b border-ink-100 text-[10px] text-ink-400">
-                    <th className="px-2 py-1.5 font-medium">Metric</th>
-                    {items.map((p, i) => (
-                      <th key={p.slug} className="px-2 py-1.5 font-medium">
-                        <span className="inline-flex items-center gap-1">
-                          <span
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: COLORS[i % COLORS.length] }}
-                          />
-                          {p.name}
-                        </span>
-                      </th>
-                    ))}
-                    {items.length === 2 && (
-                      <th className="px-2 py-1.5 font-medium">Difference</th>
-                    )}
-                    {items.length >= 2 && (
-                      <th className="px-2 py-1.5 font-medium">Winner</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {metrics.map((m, ri) => {
-                    const w = winnerIdx(m.values);
-                    const diff =
-                      items.length === 2 && m.values[0] != null && m.values[1] != null
-                        ? m.values[0] - m.values[1]
-                        : null;
-                    return (
-                      <tr
-                        key={m.key}
-                        className={`border-b border-ink-50 ${ri % 2 ? "bg-ink-50/40" : ""}`}
-                      >
-                        <td className="px-2 py-1.5 text-ink-500">{m.label}</td>
-                        {m.values.map((v, i) => (
-                          <td key={i} className="px-2 py-1.5 font-medium text-ink-800">
-                            {m.format(v)}
-                          </td>
-                        ))}
-                        {items.length === 2 && (
-                          <td className="px-2 py-1.5 text-ink-600">
-                            {diff == null
-                              ? "—"
-                              : m.key.includes("Ch")
-                                ? pct(diff)
-                                : m.format(Math.abs(diff))}
-                          </td>
-                        )}
-                        {items.length >= 2 && (
-                          <td className="px-2 py-1.5">
-                            {w >= 0 ? (
-                              <span
-                                className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white"
-                                style={{ background: COLORS[w % COLORS.length] }}
-                              >
-                                {items[w].name}
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                        )}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {!items.length ? (
+            listLoading ? <MetricsSkel /> : null
+          ) : (
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] text-left text-[11px]">
+                  <thead>
+                    <tr className="border-b border-ink-100 text-[10px] text-ink-400">
+                      <th className="px-2 py-1.5 font-medium">Metric</th>
+                      {items.map((p, i) => (
+                        <th key={p.slug} className="px-2 py-1.5 font-medium">
+                          <span className="inline-flex items-center gap-1">
+                            <span
+                              className="h-1.5 w-1.5 rounded-full"
+                              style={{ background: COLORS[i % COLORS.length] }}
+                            />
+                            {p.name}
+                          </span>
+                        </th>
+                      ))}
+                      {items.length === 2 && (
+                        <th className="px-2 py-1.5 font-medium">Difference</th>
+                      )}
+                      {items.length >= 2 && (
+                        <th className="px-2 py-1.5 font-medium">Winner</th>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {metrics.map((m, ri) => {
+                      const w = winnerIdx(m.values);
+                      const diff =
+                        items.length === 2 && m.values[0] != null && m.values[1] != null
+                          ? m.values[0] - m.values[1]
+                          : null;
+                      return (
+                        <tr
+                          key={m.key}
+                          className={`border-b border-ink-50 ${ri % 2 ? "bg-ink-50/40" : ""}`}
+                        >
+                          <td className="px-2 py-1.5 text-ink-500">{m.label}</td>
+                          {m.values.map((v, i) => (
+                            <td key={i} className="px-2 py-1.5 font-medium text-ink-800">
+                              {m.format(v)}
+                            </td>
+                          ))}
+                          {items.length === 2 && (
+                            <td className="px-2 py-1.5 text-ink-600">
+                              {diff == null
+                                ? "—"
+                                : m.key.includes("Ch")
+                                  ? pct(diff)
+                                  : m.format(Math.abs(diff))}
+                            </td>
+                          )}
+                          {items.length >= 2 && (
+                            <td className="px-2 py-1.5">
+                              {w >= 0 ? (
+                                <span
+                                  className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white"
+                                  style={{ background: COLORS[w % COLORS.length] }}
+                                >
+                                  {items[w].name}
+                                </span>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             <CompareLine
               title="TVL"
               format={usd}
+              loading={chartsBoot}
               series={chartSeries.map((s) => ({
                 label: s.label,
                 color: s.color,
@@ -797,6 +839,7 @@ export function ComparePage() {
             <CompareLine
               title="Volume"
               format={usd}
+              loading={chartsBoot}
               series={chartSeries.map((s) => ({
                 label: s.label,
                 color: s.color,
@@ -806,6 +849,7 @@ export function ComparePage() {
             <CompareLine
               title="Fees"
               format={usd}
+              loading={chartsBoot}
               series={chartSeries.map((s) => ({
                 label: s.label,
                 color: s.color,
@@ -814,6 +858,7 @@ export function ComparePage() {
             />
             <CompareLine
               title="Users"
+              loading={chartsBoot}
               series={chartSeries.map((s) => ({
                 label: s.label,
                 color: s.color,
@@ -822,6 +867,7 @@ export function ComparePage() {
             />
             <CompareLine
               title="Transactions"
+              loading={chartsBoot}
               series={chartSeries.map((s) => ({
                 label: s.label,
                 color: s.color,
@@ -829,6 +875,7 @@ export function ComparePage() {
               }))}
             />
             <MarketShareChart
+              loading={chartsBoot}
               series={chartSeries.map((s) => ({
                 label: s.label,
                 color: s.color,
@@ -840,70 +887,86 @@ export function ComparePage() {
           <div className="grid gap-2 lg:grid-cols-3">
             <div className="card p-2">
               <div className="panel-title mb-1.5">Growth Comparison ({RANGE})</div>
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="text-[10px] text-ink-400">
-                    <th className="py-1 text-left font-medium">Metric</th>
-                    {items.map((p) => (
-                      <th key={p.slug} className="py-1 text-right font-medium">
-                        {p.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {growthRows.map((r) => (
-                    <tr key={r.label} className="border-t border-ink-50">
-                      <td className="py-1 text-ink-500">{r.label}</td>
-                      {r.values.map((v, i) => (
-                        <td
-                          key={i}
-                          className={`py-1 text-right font-medium ${
-                            v >= 0 ? "text-emerald-600" : "text-rose-600"
-                          }`}
-                        >
-                          {pct(v)}
-                        </td>
+              {chartsBoot ? (
+                <div className="space-y-2">
+                  {[0, 1, 2, 3].map((i) => (
+                    <Skel key={i} className="h-4 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="text-[10px] text-ink-400">
+                      <th className="py-1 text-left font-medium">Metric</th>
+                      {items.map((p) => (
+                        <th key={p.slug} className="py-1 text-right font-medium">
+                          {p.name}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {growthRows.map((r) => (
+                      <tr key={r.label} className="border-t border-ink-50">
+                        <td className="py-1 text-ink-500">{r.label}</td>
+                        {r.values.map((v, i) => (
+                          <td
+                            key={i}
+                            className={`py-1 text-right font-medium ${
+                              v >= 0 ? "text-emerald-600" : "text-rose-600"
+                            }`}
+                          >
+                            {pct(v)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             <div className="card p-2">
               <div className="panel-title mb-1.5">Efficiency Metrics ({RANGE})</div>
-              <table className="w-full text-[11px]">
-                <thead>
-                  <tr className="text-[10px] text-ink-400">
-                    <th className="py-1 text-left font-medium">Metric</th>
-                    {efficiencyRows.map((r) => (
-                      <th key={r.name} className="py-1 text-right font-medium">
-                        {r.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(
-                    [
-                      ["Fees / TVL", (r: (typeof efficiencyRows)[0]) => pct(r.feesTvl)],
-                      ["Volume / TVL", (r: (typeof efficiencyRows)[0]) => r.volTvl.toFixed(2) + "x"],
-                      ["Txns / User", (r: (typeof efficiencyRows)[0]) => compact(r.txsUser)],
-                      ["Fees / User", (r: (typeof efficiencyRows)[0]) => usd(r.feesUser)],
-                    ] as const
-                  ).map(([label, fmt]) => (
-                    <tr key={label} className="border-t border-ink-50">
-                      <td className="py-1 text-ink-500">{label}</td>
+              {chartsBoot ? (
+                <div className="space-y-2">
+                  {[0, 1, 2, 3].map((i) => (
+                    <Skel key={i} className="h-4 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="text-[10px] text-ink-400">
+                      <th className="py-1 text-left font-medium">Metric</th>
                       {efficiencyRows.map((r) => (
-                        <td key={r.name} className="py-1 text-right font-medium text-ink-800">
-                          {fmt(r)}
-                        </td>
+                        <th key={r.name} className="py-1 text-right font-medium">
+                          {r.name}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {(
+                      [
+                        ["Fees / TVL", (r: (typeof efficiencyRows)[0]) => pct(r.feesTvl)],
+                        ["Volume / TVL", (r: (typeof efficiencyRows)[0]) => r.volTvl.toFixed(2) + "x"],
+                        ["Txns / User", (r: (typeof efficiencyRows)[0]) => compact(r.txsUser)],
+                        ["Fees / User", (r: (typeof efficiencyRows)[0]) => usd(r.feesUser)],
+                      ] as const
+                    ).map(([label, fmt]) => (
+                      <tr key={label} className="border-t border-ink-50">
+                        <td className="py-1 text-ink-500">{label}</td>
+                        {efficiencyRows.map((r) => (
+                          <td key={r.name} className="py-1 text-right font-medium text-ink-800">
+                            {fmt(r)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
 
             <div className="card p-2">
@@ -911,6 +974,7 @@ export function ComparePage() {
               <div className="space-y-2">
                 {items.map((p, i) => {
                   const d = details[p.slug];
+                  const waiting = pending[p.slug] || !(p.slug in details);
                   return (
                     <div
                       key={p.slug}
@@ -921,16 +985,25 @@ export function ComparePage() {
                         <ProtocolIcon slug={p.slug} name={p.name} category={p.category} size={16} />
                         {p.name}
                       </div>
-                      <p className="text-[10px] leading-snug text-ink-500">
-                        {d?.protocol.description ||
-                          `${p.name} is a ${catLabel(p.category)} protocol on Arc Testnet.`}
-                      </p>
-                      <Link
-                        to={paths.protocol(p.slug)}
-                        className="mt-1 inline-block text-[10px] font-medium text-arc-600"
-                      >
-                        View Protocol →
-                      </Link>
+                      {waiting ? (
+                        <div className="space-y-1">
+                          <Skel className="h-2.5 w-full" />
+                          <Skel className="h-2.5 w-4/5" />
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-[10px] leading-snug text-ink-500">
+                            {d?.protocol.description ||
+                              `${p.name} is a ${catLabel(p.category)} protocol on Arc Testnet.`}
+                          </p>
+                          <Link
+                            to={paths.protocol(p.slug)}
+                            className="mt-1 inline-block text-[10px] font-medium text-arc-600"
+                          >
+                            View Protocol →
+                          </Link>
+                        </>
+                      )}
                     </div>
                   );
                 })}
