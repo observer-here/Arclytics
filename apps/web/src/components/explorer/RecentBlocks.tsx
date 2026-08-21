@@ -51,7 +51,8 @@ export function RecentBlocks() {
             >
               <td className="py-1.5 font-medium text-ink-800">#{num(b.number)}</td>
               <td className="py-1.5 font-mono text-[11px] text-ink-500">
-                {shortHash(b.hash, 8, 6)}
+                <span className="sm:hidden">{shortHash(b.hash, 4, 3)}</span>
+                <span className="hidden sm:inline">{shortHash(b.hash, 8, 6)}</span>
               </td>
               <td className="py-1.5 text-ink-600">{b.txCount}</td>
               <td className="py-1.5 text-right text-ink-400">

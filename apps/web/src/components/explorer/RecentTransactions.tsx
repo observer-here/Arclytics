@@ -50,11 +50,13 @@ export function RecentTransactions() {
               className={`border-t border-ink-100 ${freshTx.has(tx.hash) ? "tx-enter" : ""}`}
             >
               <td className="py-1.5 font-mono text-[11px] text-ink-700">
-                {shortHash(tx.hash, 8, 6)}
+                <span className="sm:hidden">{shortHash(tx.hash, 4, 3)}</span>
+                <span className="hidden sm:inline">{shortHash(tx.hash, 8, 6)}</span>
               </td>
-              <td className="py-1.5 text-ink-600">{tx.method}</td>
+              <td className="py-1.5 text-[11px] text-ink-600">{tx.method}</td>
               <td className="py-1.5 font-mono text-[11px] text-ink-500">
-                {shortHash(tx.from.hash)}
+                <span className="sm:hidden">{shortHash(tx.from.hash, 4, 3)}</span>
+                <span className="hidden sm:inline">{shortHash(tx.from.hash)}</span>
               </td>
               <td className="py-1.5 text-right text-ink-400">
                 <TimeAgo ts={tx.timestamp} />
