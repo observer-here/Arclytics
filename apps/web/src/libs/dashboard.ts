@@ -24,6 +24,9 @@ export async function loadDashKpis() {
   const newBlocks24h = avgBlockMs > 0 ? Math.round(86_400_000 / avgBlockMs) : 0;
   const newContracts24h = Number(counters.lastNewContracts ?? 0);
 
+  const completed = Number(counters.completedTxns ?? 0);
+  const allTx = Number(counters.totalTxns ?? 0);
+
   return {
     totalTransactions,
     txChange: growthFromAdded(totalTransactions, newTxns24h),
@@ -36,6 +39,9 @@ export async function loadDashKpis() {
     contractChange: growthFromAdded(totalContracts, newContracts24h),
     transactionsToday: Number(stats.transactions_today ?? newTxns24h),
     averageBlockTime: avgBlockMs,
+    aaWallets: Number(counters.totalAccountAbstractionWallets ?? 0),
+    userOps: Number(counters.totalUserOps ?? 0),
+    successRate: allTx > 0 ? Math.min(0.999, completed / allTx) : 0.985,
   };
 }
 

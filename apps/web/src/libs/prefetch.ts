@@ -13,13 +13,19 @@ import { fetchCache, prefetch } from "@/libs/queryCache";
 import { paths } from "@/routes/paths";
 
 export const DASH = {
-  kpis: "dash-kpis-v1",
+  kpis: "dash-kpis-v2",
   rankings: "protocol-rankings-v11",
   tokens: "dash-tokens-v1",
   validators: "dash-validators-v1",
   tx: "dash-tx-v1",
   addr: "dash-addr-v1",
   vol: "dash-vol-v1",
+} as const;
+
+export const ANALYTICS = {
+  contracts: "analytics-contracts-v1",
+  tokens: "analytics-tokens-v1",
+  wallets: "analytics-wallets-v1",
 } as const;
 
 export function prefetchDashboard() {
@@ -30,6 +36,15 @@ export function prefetchDashboard() {
   prefetch(DASH.tx, loadDashTxChart);
   prefetch(DASH.addr, loadDashAddrChart);
   prefetch(DASH.vol, loadDashVolChart);
+}
+
+export async function prefetchAnalytics() {
+  const { loadAnalyticsContracts, loadAnalyticsTokens, loadAnalyticsWallets } =
+    await import("@/libs/analytics");
+  prefetchDashboard();
+  prefetch(ANALYTICS.contracts, loadAnalyticsContracts);
+  prefetch(ANALYTICS.tokens, loadAnalyticsTokens);
+  prefetch(ANALYTICS.wallets, loadAnalyticsWallets);
 }
 
 export async function loadNetworkMeta() {
@@ -63,10 +78,6 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
     const { loadNftDashboard } = await import("@/libs/nfts");
     return loadNftDashboard();
   },
-  [paths.analytics]: async () => {
-    const { loadAnalytics } = await import("@/libs/analytics");
-    return loadAnalytics();
-  },
   [paths.compare]: async () => {
     const { loadCompareProtocols } = await import("@/libs/compare");
     return loadCompareProtocols();
@@ -90,7 +101,6 @@ const cacheKeyByPath: Record<string, string> = {
   [paths.tokens]: "tokens-api-v3",
   [paths.tokensMarketCap]: "tokens-api-v3",
   [paths.nfts]: "nfts-dashboard-v1",
-  [paths.analytics]: "analytics-v7",
   [paths.compare]: "compare-v2",
   [paths.explorer]: "transactions",
   [paths.blocks]: "blocks",
@@ -101,6 +111,10 @@ const cacheKeyByPath: Record<string, string> = {
 export function prefetchRoute(path: string) {
   if (path === paths.home) {
     prefetchDashboard();
+    return;
+  }
+  if (path === paths.analytics) {
+    void prefetchAnalytics();
     return;
   }
   const loader = routeLoaders[path];
