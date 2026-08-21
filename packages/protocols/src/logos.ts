@@ -13,6 +13,7 @@ export const PROTOCOL_LOGOS: Record<string, string> = {
   warpdex: "/protocols/warpdex.png",
   payx: "/protocols/payx.svg",
   sendarc: "/protocols/sendarc.jpg",
+  tella: "/protocols/tella.svg",
   tower: "/protocols/tower.svg",
   settlenet: "/protocols/settlenet.ico",
   arcswap: "/protocols/arcswap.svg",

@@ -15,6 +15,7 @@ import { perpdex } from "./perpdex";
 import { sendarc } from "./sendarc";
 import { settlenet } from "./settlenet";
 import { synthra } from "./synthra";
+import { tella } from "./tella";
 import { tower } from "./tower";
 import { unitflow } from "./unitflow";
 import { warpdex } from "./warpdex";
@@ -39,6 +40,7 @@ export const protocols: ProtocolConfig[] = [
   warpdex,
   payx,
   sendarc,
+  tella,
   tower,
   settlenet,
   arcswap,
@@ -68,6 +70,7 @@ export * from "./arcvault";
 export * from "./warpdex";
 export * from "./payx";
 export * from "./sendarc";
+export * from "./tella";
 export * from "./tower";
 export * from "./settlenet";
 export * from "./arcswap";
@@ -90,6 +93,7 @@ export { details as arcvaultDetails } from "./arcvault/details";
 export { details as warpdexDetails } from "./warpdex/details";
 export { details as payxDetails } from "./payx/details";
 export { details as sendarcDetails } from "./sendarc/details";
+export { details as tellaDetails } from "./tella/details";
 export { details as towerDetails } from "./tower/details";
 export { details as settlenetDetails } from "./settlenet/details";
 export { details as arcswapDetails } from "./arcswap/details";
