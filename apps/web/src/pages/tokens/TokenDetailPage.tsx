@@ -610,8 +610,6 @@ export function TokenDetailPage() {
           {tab} view — open Overview for full dashboard.
         </PanelCard>
       )}
-
-      <div className="text-center text-[10px] text-ink-400">Data provided by ArcScan API · Updated live</div>
     </div>
   );
 }

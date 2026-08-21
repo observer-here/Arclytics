@@ -14,7 +14,7 @@ import { compact, pct, usd } from "@/utils/format";
 import { TokenCompare } from "./TokenCompare";
 import { WalletCompare } from "./WalletCompare";
 
-const TABS = ["Protocols", "Tokens", "Chains", "Wallets", "Categories"] as const;
+const TABS = ["Protocols", "Tokens", "Wallets"] as const;
 const CHART_RANGES = ["7D", "30D", "90D", "1Y"] as const;
 const COLORS = ["#8b5cf6", "#ec4899", "#06b6d4", "#f59e0b"];
 const MAX = 4;
@@ -663,10 +663,6 @@ export function ComparePage() {
         <TokenCompare />
       ) : tab === "Wallets" ? (
         <WalletCompare />
-      ) : tab !== "Protocols" ? (
-        <div className="card p-4 text-[12px] text-ink-500">
-          {tab} compare is next — Protocols, Tokens and Wallets are live.
-        </div>
       ) : listLoading && !rankings?.length ? (
         <>
           <SelectSkel />
