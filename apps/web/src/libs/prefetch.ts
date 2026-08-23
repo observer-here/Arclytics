@@ -88,11 +88,7 @@ const routeLoaders: Record<string, () => Promise<unknown>> = {
     arcscan.blocksPage(null).then((d) => d.items).catch(() => []),
   [paths.transactions]: () =>
     arcscan.transactionsPage(null).then((d) => d.items).catch(() => []),
-  [paths.walletTracker]: async () => {
-    const { loadWalletDashboard } = await import("@/libs/wallets");
-    return loadWalletDashboard();
-  },
-};
+  };
 
 const cacheKeyByPath: Record<string, string> = {
   [paths.ecosystem]: "ecosystem-v11",
@@ -105,7 +101,6 @@ const cacheKeyByPath: Record<string, string> = {
   [paths.explorer]: "transactions",
   [paths.blocks]: "blocks",
   [paths.transactions]: "transactions",
-  [paths.walletTracker]: "wallet-tracker-v6",
 };
 
 export function prefetchRoute(path: string) {
@@ -115,6 +110,25 @@ export function prefetchRoute(path: string) {
   }
   if (path === paths.analytics) {
     void prefetchAnalytics();
+    return;
+  }
+  if (path === paths.walletTracker) {
+    void (async () => {
+      const { WALLET, loadWalletList, loadWalletValued, loadWalletStats, loadWalletActivity } =
+        await import("@/libs/wallets");
+      const { TRACKED_KEY } = await import("@/config/wallets");
+      let extra: string[] = [];
+      try {
+        extra = JSON.parse(localStorage.getItem(TRACKED_KEY) ?? "[]") as string[];
+      } catch {
+        extra = [];
+      }
+      const k = extra.join(",");
+      prefetch(`${WALLET.list}:${k}`, () => loadWalletList(extra));
+      prefetch(`${WALLET.valued}:${k}`, () => loadWalletValued(extra));
+      prefetch(`${WALLET.stats}:${k}`, () => loadWalletStats(extra));
+      prefetch(`${WALLET.activity}:${k}`, () => loadWalletActivity(extra));
+    })();
     return;
   }
   const loader = routeLoaders[path];

@@ -1,6 +1,6 @@
-import { CURATED_TOKENS, RESERVE_USD } from "@arclytics/chain";
+import { addresses, CURATED_TOKENS, RESERVE_USD } from "@arclytics/chain";
 import type { Arcscan, PageParams } from "../arcscan";
-import { getMeta, getTokens, getWallets, saveWallets, setMeta } from "../db";
+import { getMeta, getTokens, saveWallets, setMeta } from "../db";
 import type { Env } from "../../lib/env";
 
 type TokenFeed = {
@@ -10,10 +10,9 @@ type TokenFeed = {
   price: number | null;
   marketCap: number | null;
   interest?: number;
-  holders?: number;
 };
 
-type Capital = { total: number; stable: number; defi: number; tokens: number };
+type Capital = { total: number; stable: number; defi: number; tokens: number; usdc: number };
 
 type WalletRow = {
   address: string;
@@ -31,8 +30,10 @@ type WalletRow = {
 };
 
 const TOP_N = 100;
-const MAX_TOKENS = 8;
-const ENRICH_N = 25;
+const SCAN_TOKENS = 24;
+const VALUE_N = 50;
+const DAY_MS = 86_400_000;
+const USDC = addresses.usdc.toLowerCase();
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -52,7 +53,11 @@ function inferLabel(netWorth: number, txs: number) {
   return "DeFi User";
 }
 
-function bucket(tokenAddr: string, category: string, symbol: string): keyof Omit<Capital, "total"> {
+function bucket(
+  tokenAddr: string,
+  category: string,
+  symbol: string,
+): keyof Omit<Capital, "total" | "usdc"> {
   if (
     RESERVE_USD[tokenAddr] ||
     symbol === "USDC" ||
@@ -65,6 +70,10 @@ function bucket(tokenAddr: string, category: string, symbol: string): keyof Omit
   }
   if (category === "DeFi") return "defi";
   return "tokens";
+}
+
+function categoryOf(addr: string) {
+  return CURATED_TOKENS.find((t) => t.address.toLowerCase() === addr)?.category ?? "";
 }
 
 async function holdersForToken(arc: Arcscan, tokenAddr: string, decimals: number) {
@@ -82,6 +91,56 @@ async function holdersForToken(arc: Arcscan, tokenAddr: string, decimals: number
     rows.push({ addr, amount });
   }
   return rows;
+}
+
+/** Native USDC + every ERC-20 that has a price (token feed, peg, or ArcScan exchange_rate). */
+async function valuePortfolio(
+  arc: Arcscan,
+  addr: string,
+  priceMap: Record<string, number>,
+): Promise<Capital & { native: number }> {
+  const [profile, tokenPage] = await Promise.all([
+    arc.address(addr).catch(() => null),
+    arc.addressTokens(addr).catch(() => ({ items: [] as Array<Record<string, unknown>> })),
+  ]);
+  const native = parseAmt(profile?.coin_balance);
+  const cap: Capital & { native: number } = {
+    total: 0,
+    stable: 0,
+    defi: 0,
+    tokens: 0,
+    usdc: native,
+    native,
+  };
+  if (native > 0) {
+    cap.total += native;
+    cap.stable += native;
+  }
+
+  for (const row of tokenPage.items ?? []) {
+    const tok = (row.token ?? {}) as Record<string, unknown>;
+    const tokenAddr = String(tok.address_hash ?? "").toLowerCase();
+    if (!tokenAddr || tokenAddr === USDC) continue;
+    const decimals = Number(tok.decimals ?? 18);
+    const amount = parseAmt(row.value, decimals);
+    if (!(amount > 0)) continue;
+    const price =
+      priceMap[tokenAddr] ??
+      (tok.exchange_rate != null && Number(tok.exchange_rate) > 0
+        ? Number(tok.exchange_rate)
+        : null);
+    if (!(price != null && price > 0)) continue;
+    const usd = amount * price;
+    if (!(usd > 0) || usd > 100_000_000) continue;
+    const key = bucket(
+      tokenAddr,
+      categoryOf(tokenAddr),
+      String(tok.symbol ?? "").toUpperCase(),
+    );
+    cap.total += usd;
+    cap[key] += usd;
+  }
+  return cap;
 }
 
 export async function ingestWallets(env: Env, arc: Arcscan) {
@@ -114,18 +173,17 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
     const addr = t.address.toLowerCase();
     const price = priceMap[addr] ?? 0;
     if (!(price > 0)) continue;
-    if (scanList.length >= MAX_TOKENS) break;
+    if (scanList.length >= SCAN_TOKENS) break;
     scanList.push({
       address: t.address,
       symbol: "",
       category: t.category,
       price,
       marketCap: null,
-      holders: 1,
     });
   }
   for (const t of fromFeed) {
-    if (scanList.length >= MAX_TOKENS) break;
+    if (scanList.length >= SCAN_TOKENS) break;
     if (scanList.some((x) => x.address.toLowerCase() === t.address.toLowerCase())) continue;
     scanList.push(t);
   }
@@ -144,19 +202,25 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
       const d = Number(meta?.decimals);
       decimals = Number.isFinite(d) && d >= 0 && d <= 36 ? d : 18;
       decimalsCache.set(tokenAddr, decimals);
-      await sleep(350);
+      await sleep(250);
     }
 
     const holders = await holdersForToken(arc, token.address, decimals);
-    await sleep(350);
-    const key = bucket(tokenAddr, String(token.category ?? ""), String(token.symbol ?? "").toUpperCase());
+    await sleep(250);
+    const key = bucket(
+      tokenAddr,
+      String(token.category ?? ""),
+      String(token.symbol ?? "").toUpperCase(),
+    );
+    const isUsdc = tokenAddr === USDC;
 
     for (const h of holders) {
       const usd = h.amount * price;
-      if (!(usd > 0) || usd > 50_000_000) continue;
-      const prev = capital.get(h.addr) ?? { total: 0, stable: 0, defi: 0, tokens: 0 };
+      if (!(usd > 0) || usd > 100_000_000) continue;
+      const prev = capital.get(h.addr) ?? { total: 0, stable: 0, defi: 0, tokens: 0, usdc: 0 };
       prev.total += usd;
       prev[key] += usd;
+      if (isUsdc) prev.usdc += usd;
       capital.set(h.addr, prev);
     }
   }
@@ -165,22 +229,48 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
     .sort((a, b) => b[1].total - a[1].total)
     .slice(0, TOP_N);
 
+  const network = await arc.stats().catch(() => null as Record<string, unknown> | null);
+  const networkTxs24h = Number(network?.transactions_today ?? 0);
+
   const wallets: WalletRow[] = [];
   for (let i = 0; i < ranked.length; i++) {
-    const [addr, cap] = ranked[i];
+    const [addr, rough] = ranked[i];
     let txsTotal = 0;
     let lastActive: string | null = null;
     let name: string | undefined;
-    let native = 0;
+    let txs24h = 0;
+    let cap = { ...rough };
 
-    if (i < ENRICH_N) {
-      const [profile, counters, recent] = await Promise.all([
-        arc.address(addr).catch(() => null),
+    if (i < VALUE_N) {
+      const [valued, counters, recent, profile] = await Promise.all([
+        valuePortfolio(arc, addr, priceMap),
         arc.addressCounters(addr).catch(() => null),
-        arc.addressTransactions(addr).catch(() => ({ items: [] as Array<Record<string, unknown>> })),
+        arc.addressTransactions(addr).catch(() => ({
+          items: [] as Array<Record<string, unknown>>,
+        })),
+        arc.address(addr).catch(() => null),
       ]);
-      await sleep(350);
-      native = parseAmt(profile?.coin_balance);
+      await sleep(280);
+
+      if (valued.total > 0) {
+        cap = {
+          total: valued.total,
+          stable: valued.stable,
+          defi: valued.defi,
+          tokens: valued.tokens,
+          usdc: valued.usdc,
+        };
+      } else if (valued.native > 0) {
+        const usdcTok = rough.usdc ?? 0;
+        cap = {
+          total: rough.total - usdcTok + valued.native,
+          stable: rough.stable - usdcTok + valued.native,
+          defi: rough.defi,
+          tokens: rough.tokens,
+          usdc: valued.native,
+        };
+      }
+
       txsTotal = Number(counters?.transactions_count ?? 0);
       lastActive =
         recent.items?.[0]?.timestamp != null ? String(recent.items[0].timestamp) : null;
@@ -189,15 +279,15 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
         : profile?.ens_domain_name
           ? String(profile.ens_domain_name)
           : undefined;
+
+      const dayAgo = Date.now() - DAY_MS;
+      for (const tx of recent.items ?? []) {
+        const ts = tx.timestamp != null ? new Date(String(tx.timestamp)).getTime() : 0;
+        if (ts >= dayAgo) txs24h += 1;
+      }
     }
 
-    const netWorth = cap.total + (native > 0 ? native : 0);
-    const lastMs = lastActive ? new Date(lastActive).getTime() : 0;
-    const txs24h =
-      lastMs > 0 && Date.now() - lastMs < 86_400_000
-        ? Math.max(1, Math.round(txsTotal * 0.02))
-        : 0;
-
+    const netWorth = cap.total;
     wallets.push({
       address: addr,
       name,
@@ -211,7 +301,7 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
       spark24h: [netWorth],
       spark7d: [netWorth],
       breakdown: {
-        stable: cap.stable + (native > 0 ? native : 0),
+        stable: cap.stable,
         defi: cap.defi,
         tokens: cap.tokens,
         nft: 0,
@@ -224,22 +314,27 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
 
   const totalValue = wallets.reduce((s, w) => s + w.netWorth, 0);
   const top10Value = wallets.slice(0, 10).reduce((s, w) => s + w.netWorth, 0);
-  const active24h = wallets.filter((w) => w.txs24h > 0).length;
-  const txs24h = wallets.reduce((s, w) => s + w.txs24h, 0);
+  const active24h = wallets.filter((w) => {
+    if (w.txs24h > 0) return true;
+    if (!w.lastActive) return false;
+    return Date.now() - new Date(w.lastActive).getTime() < DAY_MS;
+  }).length;
+
   const portfolio = [
     { label: "Stablecoins", value: wallets.reduce((s, w) => s + w.breakdown.stable, 0) },
     { label: "DeFi", value: wallets.reduce((s, w) => s + w.breakdown.defi, 0) },
     { label: "Tokens", value: wallets.reduce((s, w) => s + w.breakdown.tokens, 0) },
   ].filter((s) => s.value > 0);
 
+  const walletTxSum = wallets.reduce((s, w) => s + w.txs24h, 0);
   const stats = {
     tracked: wallets.length,
     totalValue,
     top10Value,
     active24h,
-    txs24h,
+    txs24h: networkTxs24h > 0 ? networkTxs24h : walletTxSum,
     netFlow24h: 0,
-    avgAgeDays: Math.round(txs24h / Math.max(active24h, 1)),
+    avgAgeDays: 0,
     activeRate: wallets.length ? (active24h / wallets.length) * 100 : 0,
     valueSpark: wallets[0]?.spark7d ?? [],
     txSpark: [] as number[],
@@ -251,15 +346,18 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
   const updatedAt = Date.now();
   await saveWallets(env, { items: wallets, stats, updatedAt });
   await setMeta(env, "last_wallets_ingest", String(updatedAt));
-  return { ok: true, count: wallets.length, updatedAt };
+  return {
+    ok: true,
+    count: wallets.length,
+    totalValue,
+    top10Value,
+    txs24h: stats.txs24h,
+    updatedAt,
+  };
 }
 
 export async function maybeIngestWallets(env: Env, arc: Arcscan, minAgeMs = 30 * 60_000) {
   const last = Number((await getMeta(env, "last_wallets_ingest")) ?? "0") || 0;
   if (Date.now() - last < minAgeMs) return { skipped: true, last };
   return ingestWallets(env, arc);
-}
-
-export async function readWallets(env: Env) {
-  return getWallets(env);
 }

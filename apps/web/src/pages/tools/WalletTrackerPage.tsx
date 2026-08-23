@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { DonutChart } from "@/components/charts/Charts";
 import { MetricCard } from "@/components/ecosystem/MetricCard";
 import { Icons } from "@/components/shared/Icons";
+import { Skel } from "@/components/shared/Skel";
 import {
   ADDR_RE,
   TRACKED_KEY,
@@ -11,12 +12,19 @@ import {
 } from "@/config/wallets";
 import { useAsyncData } from "@/hooks/useAsyncData";
 import { isWatched, subscribeWatch, toggleWatch as toggleStar } from "@/libs/watchlist";
-import { loadWalletDashboard } from "@/libs/wallets";
-import { clearCache } from "@/libs/queryCache";
+import {
+  WALLET,
+  clearWalletCaches,
+  computeStats,
+  loadWalletActivity,
+  loadWalletList,
+  loadWalletStats,
+  loadWalletValued,
+} from "@/libs/wallets";
+import { explorerUrl } from "@/config/network";
 import { paths } from "@/routes/paths";
 import { ago, compact, pct, shortHash, usd } from "@/utils/format";
 
-const CACHE_KEY = "wallet-tracker-v6";
 const DONUT_COLORS = ["#8b5cf6", "#3b82f6", "#f97316", "#10b981", "#94a3b8"];
 
 function readList(key: string) {
@@ -58,6 +66,89 @@ function TrendSpark({ series, up }: { series: number[]; up: boolean }) {
   );
 }
 
+function WalletRowSkel() {
+  return (
+    <tr className="border-b border-ink-50">
+      <td className="px-3 py-2"><Skel className="h-3 w-3" /></td>
+      <td className="px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Skel className="h-6 w-6 shrink-0 rounded-full" />
+          <div className="space-y-1">
+            <Skel className="h-3 w-20" />
+            <Skel className="h-2.5 w-14" />
+          </div>
+        </div>
+      </td>
+      <td className="px-3 py-2"><Skel className="h-5 w-16 rounded-full" /></td>
+      {Array.from({ length: 5 }, (_, i) => (
+        <td key={i} className="px-3 py-2"><Skel className="ml-auto h-3 w-12" /></td>
+      ))}
+      <td className="px-3 py-2" />
+    </tr>
+  );
+}
+
+function ActivityRowSkel() {
+  return (
+    <tr className="border-b border-ink-50">
+      {Array.from({ length: 6 }, (_, i) => (
+        <td key={i} className="px-3 py-2">
+          <Skel className={`h-3 ${i === 5 ? "ml-auto w-12" : "w-16"}`} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function DonutSkel({ title }: { title: string }) {
+  return (
+    <div className="card p-2.5">
+      <div className="panel-title mb-2">{title}</div>
+      <div className="flex items-center gap-3">
+        <Skel className="h-24 w-24 shrink-0 rounded-full" />
+        <div className="flex-1 space-y-2">
+          <Skel className="h-3 w-full" />
+          <Skel className="h-3 w-4/5" />
+          <Skel className="h-3 w-3/5" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SideListSkel({ title, rows = 5 }: { title: string; rows?: number }) {
+  return (
+    <div className="card p-3">
+      <div className="panel-title mb-2">{title}</div>
+      <div className="space-y-2">
+        {Array.from({ length: rows }, (_, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            <Skel className="h-3 w-4" />
+            <Skel className="h-3 flex-1" />
+            <Skel className="h-3 w-10" />
+            <Skel className="h-3 w-12" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InsightsSkel() {
+  return (
+    <div className="card p-3">
+      <div className="panel-title mb-2">Tracked Wallet Insights</div>
+      <div className="grid grid-cols-3 gap-2">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="space-y-1 text-center">
+            <Skel className="mx-auto h-2.5 w-14" />
+            <Skel className="mx-auto h-4 w-12" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 export function WalletTrackerPage() {
   const [q, setQ] = useState("");
   const [search, setSearch] = useState("");
@@ -69,17 +160,47 @@ export function WalletTrackerPage() {
 
   useEffect(() => subscribeWatch(() => setRev((n) => n + 1)), []);
 
-  const loader = useCallback(
-    () => loadWalletDashboard(tracked),
+  const trackedKey = tracked.join(",");
+  const deps = [reload, trackedKey];
+
+  const listLoader = useCallback(
+    () => loadWalletList(tracked),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [tracked.join(","), reload],
+    deps,
+  );
+  const statsLoader = useCallback(
+    () => loadWalletStats(tracked),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    deps,
+  );
+  const activityLoader = useCallback(
+    () => loadWalletActivity(tracked),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    deps,
   );
 
-  const { data, loading, error } = useAsyncData(CACHE_KEY, loader, [reload, tracked.join(",")]);
+  const valuedLoader = useCallback(
+    () => loadWalletValued(tracked),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    deps,
+  );
 
-  const wallets = data?.wallets ?? [];
-  const stats = data?.stats;
-  const activity = data?.activity ?? [];
+  const listQ = useAsyncData(`${WALLET.list}:${trackedKey}`, listLoader, deps);
+  const valuedQ = useAsyncData(`${WALLET.valued}:${trackedKey}`, valuedLoader, deps);
+  const statsQ = useAsyncData(`${WALLET.stats}:${trackedKey}`, statsLoader, deps);
+  const activityQ = useAsyncData(`${WALLET.activity}:${trackedKey}`, activityLoader, deps);
+
+  // API rows first; live token prices + last tx fill in when valued pass completes.
+  const wallets = valuedQ.data ?? listQ.data ?? [];
+  const activity = activityQ.data ?? [];
+  const stats = useMemo(() => {
+    if (valuedQ.data?.length) return computeStats(valuedQ.data, statsQ.data);
+    return statsQ.data ?? undefined;
+  }, [valuedQ.data, statsQ.data]);
+  const listBoot = listQ.loading && !listQ.data && !valuedQ.data;
+  const statsBoot = statsQ.loading && !statsQ.data && !valuedQ.data;
+  const activityBoot = activityQ.loading && !activityQ.data;
+  const error = listQ.error ?? statsQ.error ?? activityQ.error ?? valuedQ.error;
 
   const toggleWatch = (addr: string) => {
     void toggleStar("wallet", addr);
@@ -91,7 +212,8 @@ export function WalletTrackerPage() {
     const next = [...tracked, addr];
     setTracked(next);
     writeList(TRACKED_KEY, next);
-    clearCache(CACHE_KEY);
+    clearWalletCaches(tracked);
+    clearWalletCaches(next);
     setReload((r) => r + 1);
     setSearch("");
   };
@@ -113,21 +235,18 @@ export function WalletTrackerPage() {
   const valueChange =
     stats && stats.valueSpark.length > 1
       ? ((stats.valueSpark.at(-1)! - stats.valueSpark[0]) / Math.max(stats.valueSpark[0], 1)) * 100
-      : 6.7;
-
-  if (loading && !wallets.length) {
-    return <div className="text-sm text-ink-400">Loading wallet tracker…</div>;
-  }
-  if (error && !wallets.length) {
-    return <div className="text-sm text-ink-400">{error}</div>;
-  }
+      : undefined;
 
   return (
     <div className="min-w-0 space-y-2.5">
+      {error && !wallets.length && !stats ? (
+        <div className="text-sm text-ink-400">{error}</div>
+      ) : null}
       <div className="flex gap-2">
         <input
           type="search"
-          placeholder="Search by wallet address / label"
+          id="wallet-track-input"
+          placeholder="Paste 0x address to track"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addWallet()}
@@ -146,10 +265,11 @@ export function WalletTrackerPage() {
         <MetricCard
           label="Wallets Tracked"
           value={compact(stats?.tracked ?? 0)}
-          change={6.72}
           icon={<Icons.Wallet size={11} />}
           color="#8b5cf6"
           series={stats?.txSpark}
+          loading={statsBoot}
+          hasSpark
         />
         <MetricCard
           label="Total Value Tracked"
@@ -158,28 +278,31 @@ export function WalletTrackerPage() {
           icon={<Icons.Activity size={11} />}
           color="#3b82f6"
           series={stats?.valueSpark}
+          loading={statsBoot}
+          hasSpark
         />
         <MetricCard
           label="Top 10 Wallets Value"
           value={usd(stats?.top10Value ?? 0)}
-          change={11.35}
           icon={<Icons.Rankings size={11} />}
           color="#06b6d4"
+          loading={statsBoot}
         />
         <MetricCard
           label="Active Wallets (24h)"
           value={compact(stats?.active24h ?? 0)}
-          change={14.23}
           icon={<Icons.Users size={11} />}
           color="#10b981"
+          loading={statsBoot}
         />
         <MetricCard
           label="Transactions (24h)"
           value={compact(stats?.txs24h ?? 0)}
-          change={9.18}
           icon={<Icons.Tx size={11} />}
           color="#6366f1"
           series={stats?.txSpark}
+          loading={statsBoot}
+          hasSpark
         />
       </div>
 
@@ -215,23 +338,16 @@ export function WalletTrackerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageRows.map((w, i) => {
+                  {listBoot
+                    ? Array.from({ length: pageSize }, (_, i) => <WalletRowSkel key={i} />)
+                    : pageRows.map((w, i) => {
                     const rank = (page - 1) * pageSize + i + 1;
                     const starred = rev >= 0 && isWatched("wallet", w.address);
                     const up24 = (w.change24h ?? 0) >= 0;
                     const up7 = (w.change7d ?? 0) >= 0;
                     return (
                       <tr key={w.address} className="border-b border-ink-50 hover:bg-ink-50/60">
-                        <td className="px-3 py-2">
-                          <button
-                            type="button"
-                            onClick={() => toggleWatch(w.address)}
-                            className={starred ? "text-amber-500" : "text-ink-300 hover:text-amber-400"}
-                            aria-label="Watchlist"
-                          >
-                            {starred ? <Icons.StarFilled size={12} /> : <Icons.Star size={12} />}
-                          </button>
-                        </td>
+                        <td className="px-3 py-2 text-ink-400">{rank}</td>
                         <td className="px-3 py-2">
                           <Link
                             to={paths.address(w.address)}
@@ -277,15 +393,22 @@ export function WalletTrackerPage() {
                         <td className="px-3 py-2 text-right text-ink-500">
                           {w.lastActive ? ago(w.lastActive) : "—"}
                         </td>
-                        <td className="px-3 py-2 text-ink-400">
-                          <Icons.Chevron size={14} />
+                        <td className="px-3 py-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleWatch(w.address)}
+                            className={starred ? "text-amber-500" : "text-ink-300 hover:text-amber-400"}
+                            aria-label="Watchlist"
+                          >
+                            {starred ? <Icons.StarFilled size={12} /> : <Icons.Star size={12} />}
+                          </button>
                         </td>
                       </tr>
                     );
                   })}
-                  {!pageRows.length && (
+                  {!listBoot && !pageRows.length && (
                     <tr>
-                      <td colSpan={9} className="px-3 py-10 text-center text-ink-400">
+                      <td colSpan={10} className="px-3 py-10 text-center text-ink-400">
                         No wallets match this filter.
                       </td>
                     </tr>
@@ -357,7 +480,9 @@ export function WalletTrackerPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {activity.map((a) => (
+                  {activityBoot
+                    ? Array.from({ length: 6 }, (_, i) => <ActivityRowSkel key={i} />)
+                    : activity.map((a) => (
                     <tr key={a.hash} className="border-b border-ink-50">
                       <td className="px-3 py-2 text-ink-500">{a.time ? ago(a.time) : "—"}</td>
                       <td className="px-3 py-2 font-mono text-[11px]">{shortHash(a.address)}</td>
@@ -366,7 +491,7 @@ export function WalletTrackerPage() {
                       <td className="px-3 py-2 text-right font-medium">{usd(a.valueUsd)}</td>
                       <td className="px-3 py-2 text-right">
                         <a
-                          href={`https://testnet.arcscan.app/tx/${a.hash}`}
+                          href={explorerUrl(`/tx/${a.hash}`)}
                           target="_blank"
                           rel="noreferrer"
                           className="text-arc-600 hover:underline"
@@ -376,7 +501,7 @@ export function WalletTrackerPage() {
                       </td>
                     </tr>
                   ))}
-                  {!activity.length && (
+                  {!activityBoot && !activity.length && (
                     <tr>
                       <td colSpan={6} className="px-3 py-8 text-center text-ink-400">
                         No recent activity from tracked wallets.
@@ -390,12 +515,19 @@ export function WalletTrackerPage() {
         </div>
 
         <div className="min-w-0 space-y-2">
-          <DonutChart
-            title="Portfolio Distribution"
-            slices={stats?.portfolio ?? []}
-            colors={DONUT_COLORS}
-          />
+          {statsBoot ? (
+            <DonutSkel title="Portfolio Distribution" />
+          ) : (
+            <DonutChart
+              title="Portfolio Distribution"
+              slices={stats?.portfolio ?? []}
+              colors={DONUT_COLORS}
+            />
+          )}
 
+          {statsBoot ? (
+            <SideListSkel title="Top Gainers (24h)" />
+          ) : (
           <div className="card p-3">
             <div className="panel-title mb-2">Top Gainers (24h)</div>
             <div className="space-y-2">
@@ -414,7 +546,11 @@ export function WalletTrackerPage() {
               )}
             </div>
           </div>
+          )}
 
+          {statsBoot ? (
+            <SideListSkel title="Top Losers (24h)" />
+          ) : (
           <div className="card p-3">
             <div className="panel-title mb-2">Top Losers (24h)</div>
             <div className="space-y-2">
@@ -433,7 +569,11 @@ export function WalletTrackerPage() {
               )}
             </div>
           </div>
+          )}
 
+          {statsBoot ? (
+            <InsightsSkel />
+          ) : (
           <div className="card p-3">
             <div className="panel-title mb-2">Tracked Wallet Insights</div>
             <div className="grid min-w-0 grid-cols-3 gap-2 text-center">
@@ -449,7 +589,7 @@ export function WalletTrackerPage() {
               <div className="min-w-0">
                 <div className="text-[10px] text-ink-400">Avg. Wallet Age</div>
                 <div className="truncate text-[13px] font-semibold text-ink-800">
-                  {stats?.avgAgeDays ?? 0}d
+                  {(stats?.avgAgeDays ?? 0) > 0 ? `${stats!.avgAgeDays}d` : "—"}
                 </div>
               </div>
               <div className="min-w-0">
@@ -460,10 +600,11 @@ export function WalletTrackerPage() {
               </div>
             </div>
           </div>
+          )}
 
           <button
             type="button"
-            onClick={() => document.querySelector<HTMLInputElement>("input[type=search]")?.focus()}
+            onClick={() => document.getElementById("wallet-track-input")?.focus()}
             className="w-full rounded-lg bg-gradient-to-r from-violet-500 to-blue-500 py-2.5 text-[12px] font-medium text-white"
           >
             + Add Wallet to Track

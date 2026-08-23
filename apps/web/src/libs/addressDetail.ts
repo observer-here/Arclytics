@@ -1,4 +1,4 @@
-import { addresses, RESERVE_USD } from "@arclytics/chain";
+import { addresses, CURATED_TOKENS, RESERVE_USD } from "@arclytics/chain";
 import { getTokens } from "@/libs/api";
 import { arcscan } from "@/libs/arcscan";
 import { fetchCache } from "@/libs/queryCache";
@@ -135,6 +135,10 @@ export async function loadAddressTokenList(address: string): Promise<AddressToke
     priceFeed(),
   ]);
   const priceMap: Record<string, number> = { ...RESERVE_USD };
+  for (const t of CURATED_TOKENS) {
+    const a = t.address.toLowerCase();
+    if (t.pegUsd && priceMap[a] == null) priceMap[a] = 1;
+  }
   for (const t of feed.items ?? []) {
     if (t.price != null && t.price > 0) priceMap[t.address.toLowerCase()] = t.price;
   }
@@ -230,19 +234,36 @@ export async function loadAddressBalanceSeries(
     .filter((d) => d.date);
 }
 
+/** Native USDC + ERC-20s in one list (USDC once, sorted by value). */
+export function mergeHoldings(nativeUsdc: number, tokens: AddressToken[]): AddressToken[] {
+  const usdc = addresses.usdc.toLowerCase();
+  const rest = tokens.filter((t) => t.address !== usdc);
+  const holdings = [...rest];
+  if (nativeUsdc > 0) {
+    holdings.push({
+      address: usdc,
+      name: "USD Coin",
+      symbol: "USDC",
+      balance: nativeUsdc,
+      valueUsd: nativeUsdc,
+      price: 1,
+      type: "native",
+    });
+  }
+  return holdings.sort((a, b) => b.valueUsd - a.valueUsd || b.balance - a.balance);
+}
+
 export function portfolioSlices(
   nativeUsdc: number,
   tokens: AddressToken[],
-  nfts: AddressNft[],
+  _nfts: AddressNft[] = [],
 ): Array<{ label: string; value: number }> {
-  const native = { label: "USDC", value: nativeUsdc };
-  const top = tokens.slice(0, 4).map((t) => ({ label: t.symbol || "Token", value: t.valueUsd }));
-  const used = new Set(top.map((t) => t.label));
-  const rest = tokens.filter((t) => !used.has(t.symbol)).reduce((s, t) => s + t.valueUsd, 0);
-  const out = [native, ...top];
-  if (rest > 0) out.push({ label: "Other", value: rest });
-  if (nfts.length) out.push({ label: "NFTs", value: nfts.length });
-  return out.filter((s) => s.value > 0);
+  const valued = mergeHoldings(nativeUsdc, tokens).filter((t) => t.valueUsd > 0);
+  const top = valued.slice(0, 5).map((t) => ({ label: t.symbol || "Token", value: t.valueUsd }));
+  const topAddrs = new Set(valued.slice(0, 5).map((t) => t.address));
+  const rest = valued.filter((t) => !topAddrs.has(t.address)).reduce((s, t) => s + t.valueUsd, 0);
+  if (rest > 0) top.push({ label: "Other", value: rest });
+  return top;
 }
 
 /** Combined loader for address detail page. */
@@ -258,28 +279,21 @@ export async function loadAddressDetail(address: string): Promise<AddressDetail 
   ]);
   if (!profile) return null;
 
-  const tokenValueUsd = tokens.reduce((s, t) => s + t.valueUsd, 0);
-  const usdcAddr = addresses.usdc.toLowerCase();
-  const usdcToken = tokens.find((t) => t.address === usdcAddr);
-  const otherTokens = Math.max(0, tokenValueUsd - (usdcToken?.valueUsd ?? 0));
-  const portfolio = [
-    { label: "USDC", value: profile.nativeUsdc },
-    { label: "Other tokens", value: otherTokens + (usdcToken?.valueUsd ?? 0) },
-    { label: "NFTs", value: Math.max(nfts.length, 0) },
-  ].filter((s) => s.value > 0);
+  const holdings = mergeHoldings(profile.nativeUsdc, tokens);
+  const tokenValueUsd = holdings.reduce((s, t) => s + t.valueUsd, 0);
 
   return {
     ...profile,
     tokenValueUsd,
-    tokenCount: tokens.length,
+    tokenCount: holdings.length,
     nftCount: nfts.length,
-    tokens,
+    tokens: holdings,
     nfts,
     txs,
     transfers,
-    netWorth: profile.nativeUsdc + tokenValueUsd,
+    netWorth: tokenValueUsd,
     balanceSeries,
-    portfolio,
+    portfolio: portfolioSlices(profile.nativeUsdc, tokens, nfts),
     lastActive: txs[0]?.timestamp ?? null,
     firstSeen: balanceSeries[0]?.date ? `${balanceSeries[0].date}T00:00:00.000Z` : null,
   };

@@ -2,11 +2,22 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DonutChart } from "@/components/charts/Charts";
 import { Icons } from "@/components/shared/Icons";
+import { Skel } from "@/components/shared/Skel";
 import { PageNav } from "@/components/shared/PageNav";
 import { TokenIcon } from "@/components/shared/TokenIcon";
 import { explorerUrl } from "@/config/network";
 import { useAsyncData } from "@/hooks/useAsyncData";
-import { loadAddressDetail, type AddressTx } from "@/libs/addressDetail";
+import {
+  loadAddressBalanceSeries,
+  loadAddressNftList,
+  loadAddressProfile,
+  loadAddressTokenList,
+  loadAddressTransferList,
+  loadAddressTxList,
+  mergeHoldings,
+  portfolioSlices,
+  type AddressTx,
+} from "@/libs/addressDetail";
 import { isWatched, subscribeWatch, toggleWatch as toggleWatchItem } from "@/libs/watchlist";
 import { paths } from "@/routes/paths";
 import { ago, compact, shortHash, usd, usdc } from "@/utils/format";
@@ -165,13 +176,98 @@ function TxTable({ rows, self }: { rows: AddressTx[]; self: string }) {
   );
 }
 
+function TxRowSkel() {
+  return (
+    <tr className="border-b border-ink-100">
+      {Array.from({ length: 7 }, (_, i) => (
+        <td key={i} className="px-2.5 py-1.5">
+          <Skel className={`h-3 ${i === 5 ? "ml-auto w-12" : "w-16"}`} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function TokenRowSkel({ cols = 4 }: { cols?: number }) {
+  return (
+    <tr className="border-b border-ink-100">
+      {Array.from({ length: cols }, (_, i) => (
+        <td key={i} className="px-2.5 py-1.5">
+          <Skel className={`h-3 ${i === 0 ? "w-24" : "ml-auto w-12"}`} />
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+function StatCellSkel() {
+  return (
+    <div className="min-w-0 px-3 py-2.5">
+      <Skel className="h-2.5 w-14" />
+      <Skel className="mt-1.5 h-3.5 w-16" />
+      <Skel className="mt-1 h-2.5 w-12" />
+    </div>
+  );
+}
+
+function SideBlockSkel({ title, rows = 5 }: { title: string; rows?: number }) {
+  return (
+    <div className="card p-3">
+      <div className="mb-2 text-[11px] font-semibold text-ink-700">{title}</div>
+      <div className="space-y-2">
+        {Array.from({ length: rows }, (_, i) => (
+          <div key={i} className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <Skel className="h-5 w-5 rounded-full" />
+              <Skel className="h-3 w-14" />
+            </div>
+            <div className="space-y-1">
+              <Skel className="ml-auto h-3 w-12" />
+              <Skel className="ml-auto h-2.5 w-10" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 export function AddressDetailPage() {
   const { address = "" } = useParams();
-  const { data, loading, error } = useAsyncData(
-    `address-detail-v2:${address.toLowerCase()}`,
-    () => loadAddressDetail(address),
-    [address],
+  const key = address.toLowerCase();
+  const profileQ = useAsyncData(`addr-profile:${key}`, () => loadAddressProfile(address), [address]);
+  const tokensQ = useAsyncData(`addr-tokens:${key}`, () => loadAddressTokenList(address), [address]);
+  const nftsQ = useAsyncData(`addr-nfts:${key}`, () => loadAddressNftList(address), [address]);
+  const txsQ = useAsyncData(`addr-txs:${key}`, () => loadAddressTxList(address), [address]);
+  const transfersQ = useAsyncData(`addr-xfers:${key}`, () => loadAddressTransferList(address), [address]);
+  const seriesQ = useAsyncData(`addr-series:${key}`, () => loadAddressBalanceSeries(address), [address]);
+
+  const profile = profileQ.data;
+  const tokens = tokensQ.data ?? [];
+  const nfts = nftsQ.data ?? [];
+  const txs = txsQ.data ?? [];
+  const transfers = transfersQ.data ?? [];
+  const balanceSeries = seriesQ.data ?? [];
+
+  const profileBoot = profileQ.loading && !profile;
+  const tokensBoot = tokensQ.loading && !tokensQ.data;
+  const nftsBoot = nftsQ.loading && !nftsQ.data;
+  const txsBoot = txsQ.loading && !txsQ.data;
+  const transfersBoot = transfersQ.loading && !transfersQ.data;
+  const seriesBoot = seriesQ.loading && !seriesQ.data;
+
+  const holdings = useMemo(
+    () => mergeHoldings(profile?.nativeUsdc ?? 0, tokens),
+    [profile?.nativeUsdc, tokens],
   );
+  const tokenValueUsd = useMemo(() => holdings.reduce((s, t) => s + t.valueUsd, 0), [holdings]);
+  const netWorth = tokenValueUsd;
+  const portfolio = useMemo(
+    () => (profile ? portfolioSlices(profile.nativeUsdc, tokens, nfts) : []),
+    [profile, tokens, nfts],
+  );
+  const lastActive = txs[0]?.timestamp ?? null;
+  const firstSeen = balanceSeries[0]?.date ? `${balanceSeries[0].date}T00:00:00.000Z` : null;
+  const error = profileQ.error;
   const [tab, setTab] = useState<Tab>("Transactions");
   const [txPage, setTxPage] = useState(1);
   const [tokenPage, setTokenPage] = useState(1);
@@ -187,8 +283,8 @@ export function AddressDetailPage() {
   }, [address]);
 
   const spark = useMemo(
-    () => (data?.balanceSeries ?? []).map((d) => d.value),
-    [data?.balanceSeries],
+    () => balanceSeries.map((d) => d.value),
+    [balanceSeries],
   );
   const change24h = useMemo(() => {
     if (spark.length < 2) return null;
@@ -198,21 +294,22 @@ export function AddressDetailPage() {
     return { delta: cur - prev, pct: ((cur - prev) / prev) * 100 };
   }, [spark]);
 
-  if (loading) return <div className="text-sm text-ink-400">Loading address…</div>;
-  if (error) return <div className="text-sm text-ink-400">{error}</div>;
-  if (!data) return <div className="card p-5 text-sm text-ink-500">Address not found.</div>;
+  if (!profileBoot && (error || !profile)) {
+    return <div className="card p-5 text-sm text-ink-500">{error ?? "Address not found."}</div>;
+  }
 
-  const scan = explorerUrl(`/address/${data.address}`);
-  const display = shortHash(data.address, 6, 4);
-  const title = data.name || data.ens || display;
+  const addr = profile?.address ?? key;
+  const scan = explorerUrl(`/address/${addr}`);
+  const display = shortHash(addr, 6, 4);
+  const title = profile?.name || profile?.ens || display;
 
   const toggleWatch = () => {
-    void toggleWatchItem("wallet", data.address);
+    if (profile) void toggleWatchItem("wallet", profile.address);
   };
 
   const copyAddr = async () => {
     try {
-      await navigator.clipboard.writeText(data.address);
+      await navigator.clipboard.writeText(addr);
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     } catch {
@@ -220,15 +317,16 @@ export function AddressDetailPage() {
     }
   };
 
-  const allRows = tab === "Token Transfers" ? data.transfers : data.txs;
+  const listBoot =
+    tab === "Token Transfers" ? transfersBoot : tab === "Tokens" ? tokensBoot : tab === "ERC-721 / NFTs" ? nftsBoot : txsBoot;
+  const allRows = tab === "Token Transfers" ? transfers : txs;
   const txPages = Math.max(1, Math.ceil(allRows.length / TX_PAGE));
   const page = Math.min(txPage, txPages);
   const rows = allRows.slice((page - 1) * TX_PAGE, page * TX_PAGE);
 
-  const tokensByValue = data.tokens;
-  const tokenPages = Math.max(1, Math.ceil(tokensByValue.length / TOKEN_PAGE));
+  const tokenPages = Math.max(1, Math.ceil(holdings.length / TOKEN_PAGE));
   const tPage = Math.min(tokenPage, tokenPages);
-  const tokenRows = tokensByValue.slice((tPage - 1) * TOKEN_PAGE, tPage * TOKEN_PAGE);
+  const tokenRows = holdings.slice((tPage - 1) * TOKEN_PAGE, tPage * TOKEN_PAGE);
 
   return (
     <div className="space-y-2">
@@ -240,7 +338,7 @@ export function AddressDetailPage() {
         <span className="shrink-0">›</span>
         <span className="shrink-0">Address</span>
         <span className="shrink-0">›</span>
-        <span className="truncate font-mono text-ink-600">{display}</span>
+        {profileBoot ? <Skel className="h-3 w-28" /> : <span className="truncate font-mono text-ink-600">{display}</span>}
       </div>
 
       {/* profile header */}
@@ -248,15 +346,19 @@ export function AddressDetailPage() {
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div
             className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-sm font-bold text-white shadow-sm"
-            style={{ background: walletHue(data.address) }}
+            style={{ background: walletHue(addr) }}
           >
-            {data.address.slice(2, 4).toUpperCase()}
+            {addr.slice(2, 4).toUpperCase()}
           </div>
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-1.5">
-              <h1 className="min-w-0 truncate font-mono text-[18px] font-semibold tracking-tight text-ink-900">
-                {title}
-              </h1>
+              {profileBoot ? (
+                <Skel className="h-5 w-40" />
+              ) : (
+                <h1 className="min-w-0 truncate font-mono text-[18px] font-semibold tracking-tight text-ink-900">
+                  {title}
+                </h1>
+              )}
               <button
                 type="button"
                 onClick={copyAddr}
@@ -273,22 +375,22 @@ export function AddressDetailPage() {
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <span
                 className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
-                  data.isContract
+                  profile?.isContract
                     ? "bg-violet-100 text-violet-700"
                     : "bg-emerald-100 text-emerald-700"
                 }`}
               >
-                {data.isContract ? "Contract" : "EOA"}
+                {profile?.isContract ? "Contract" : "EOA"}
               </span>
-              {data.lastActive && (
+              {lastActive && (
                 <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                   Active
                 </span>
               )}
-              {data.firstSeen && (
+              {firstSeen && (
                 <span className="text-[10px] text-ink-400">
-                  First seen: {ago(data.firstSeen)}
+                  First seen: {ago(firstSeen)}
                 </span>
               )}
             </div>
@@ -310,37 +412,39 @@ export function AddressDetailPage() {
 
       {/* overview strip — single card row like mock */}
       <div className="card grid grid-cols-2 divide-x divide-y divide-ink-100 overflow-hidden sm:grid-cols-3 xl:grid-cols-6">
-        {[
+        {profileBoot || tokensBoot
+          ? Array.from({ length: 6 }, (_, i) => <StatCellSkel key={i} />)
+          : [
           {
             label: "USDC Balance",
-            value: usdc(data.nativeUsdc),
-            sub: usd(data.nativeUsdc),
+            value: usdc((profile?.nativeUsdc ?? 0)),
+            sub: usd((profile?.nativeUsdc ?? 0)),
           },
           {
             label: "Token Value",
-            value: usd(data.tokenValueUsd),
-            sub: `${data.tokenCount} tokens`,
+            value: usd(tokenValueUsd),
+            sub: `${holdings.length} tokens`,
           },
           {
             label: "Tokens Held",
-            value: compact(data.tokenCount),
+            value: compact(holdings.length),
             sub: "View Tokens",
             onClick: () => setTab("Tokens"),
           },
           {
             label: "Transactions",
-            value: compact(data.txCount),
+            value: compact((profile?.txCount ?? 0)),
             sub: "View Transactions",
             onClick: () => setTab("Transactions"),
           },
           {
             label: "First Seen",
-            value: data.firstSeen ? ago(data.firstSeen) : "—",
-            sub: data.firstSeen ? data.firstSeen.slice(0, 10) : "",
+            value: firstSeen ? ago(firstSeen) : "—",
+            sub: firstSeen ? firstSeen.slice(0, 10) : "",
           },
           {
             label: "Last Tx",
-            value: data.lastActive ? ago(data.lastActive) : "—",
+            value: lastActive ? ago(lastActive) : "—",
             sub: "View Latest Tx",
             onClick: () => setTab("Transactions"),
           },
@@ -391,7 +495,30 @@ export function AddressDetailPage() {
 
             {(tab === "Transactions" || tab === "Token Transfers") && (
               <>
-                <TxTable rows={rows} self={data.address} />
+                {listBoot ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[780px] text-left text-[11px]">
+                      <thead>
+                        <tr className="border-b border-ink-200 text-[10px] uppercase tracking-wide text-ink-400">
+                          <th className="px-2.5 py-2 font-medium">Txn Hash</th>
+                          <th className="px-2.5 py-2 font-medium">Type</th>
+                          <th className="px-2.5 py-2 font-medium">Age</th>
+                          <th className="px-2.5 py-2 font-medium">From</th>
+                          <th className="px-2.5 py-2 font-medium">To</th>
+                          <th className="px-2.5 py-2 text-right font-medium">Value</th>
+                          <th className="px-2.5 py-2 font-medium">Token</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Array.from({ length: TX_PAGE }, (_, i) => (
+                          <TxRowSkel key={i} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <TxTable rows={rows} self={addr} />
+                )}
                 <div className="border-t border-ink-100 px-2 py-1.5">
                   <PageNav
                     page={page}
@@ -418,7 +545,9 @@ export function AddressDetailPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {tokenRows.map((t) => (
+                      {tokensBoot
+                        ? Array.from({ length: TOKEN_PAGE }, (_, i) => <TokenRowSkel key={i} />)
+                        : tokenRows.map((t) => (
                         <tr key={t.address} className="border-b border-ink-100 hover:bg-ink-50">
                           <td className="px-2.5 py-1.5">
                             <Link
@@ -434,7 +563,9 @@ export function AddressDetailPage() {
                               {t.name || t.symbol}
                             </Link>
                           </td>
-                          <td className="px-2.5 py-1.5 text-right">{compact(t.balance)}</td>
+                          <td className="px-2.5 py-1.5 text-right">
+                            {t.type === "native" ? usdc(t.balance) : compact(t.balance)}
+                          </td>
                           <td className="px-2.5 py-1.5 text-right font-medium">
                             {t.valueUsd > 0 ? usd(t.valueUsd) : "—"}
                           </td>
@@ -443,10 +574,10 @@ export function AddressDetailPage() {
                           </td>
                         </tr>
                       ))}
-                      {!tokenRows.length && (
+                      {!tokensBoot && !tokenRows.length && (
                         <tr>
                           <td colSpan={4} className="py-10 text-center text-ink-400">
-                            No ERC-20 tokens
+                            No tokens
                           </td>
                         </tr>
                       )}
@@ -468,7 +599,18 @@ export function AddressDetailPage() {
 
             {tab === "ERC-721 / NFTs" && (
               <div className="divide-y divide-ink-100">
-                {data.nfts.map((n) => (
+                {nftsBoot
+                  ? Array.from({ length: 5 }, (_, i) => (
+                      <div key={i} className="flex items-center gap-2.5 px-3 py-2">
+                        <Skel className="h-7 w-7 rounded" />
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <Skel className="h-3 w-32" />
+                          <Skel className="h-2.5 w-16" />
+                        </div>
+                        <Skel className="h-3 w-8" />
+                      </div>
+                    ))
+                  : nfts.map((n) => (
                   <Link
                     key={n.address}
                     to={paths.token(n.address)}
@@ -489,7 +631,7 @@ export function AddressDetailPage() {
                     <span className="text-[11px] font-medium text-ink-600">×{n.count}</span>
                   </Link>
                 ))}
-                {!data.nfts.length && (
+                {!nftsBoot && !nfts.length && (
                   <div className="py-10 text-center text-[12px] text-ink-400">No NFTs</div>
                 )}
               </div>
@@ -513,10 +655,12 @@ export function AddressDetailPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tokenRows.map((t) => {
+                    {tokensBoot
+                      ? Array.from({ length: 5 }, (_, i) => <TokenRowSkel key={i} cols={4} />)
+                      : tokenRows.map((t) => {
                       const pct =
-                        data.netWorth > 0
-                          ? Math.min(100, (t.valueUsd / data.netWorth) * 100)
+                        netWorth > 0
+                          ? Math.min(100, (t.valueUsd / netWorth) * 100)
                           : 0;
                       return (
                         <tr key={t.address} className="border-b border-ink-50">
@@ -535,7 +679,7 @@ export function AddressDetailPage() {
                             </Link>
                           </td>
                           <td className="px-2.5 py-1.5 text-right text-ink-600">
-                            {compact(t.balance)}
+                            {t.type === "native" ? usdc(t.balance) : compact(t.balance)}
                           </td>
                           <td className="px-2.5 py-1.5 text-right font-medium">
                             {t.valueUsd > 0 ? usd(t.valueUsd) : "—"}
@@ -554,7 +698,7 @@ export function AddressDetailPage() {
                         </tr>
                       );
                     })}
-                    {!tokenRows.length && (
+                    {!tokensBoot && !tokenRows.length && (
                       <tr>
                         <td colSpan={4} className="py-6 text-center text-ink-400">
                           No tokens
@@ -579,7 +723,7 @@ export function AddressDetailPage() {
             <div className="card min-w-0 overflow-hidden">
               <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-3 py-2">
                 <span className="truncate text-[12px] font-semibold text-ink-800">
-                  NFT Holdings (Top {Math.min(4, data.nfts.length)})
+                  NFT Holdings (Top {Math.min(4, nfts.length)})
                 </span>
                 <button
                   type="button"
@@ -590,7 +734,18 @@ export function AddressDetailPage() {
                 </button>
               </div>
               <div className="divide-y divide-ink-100">
-                {data.nfts.slice(0, 4).map((n) => (
+                {nftsBoot
+                  ? Array.from({ length: 4 }, (_, i) => (
+                      <div key={i} className="flex items-center gap-2.5 px-3 py-2">
+                        <Skel className="h-9 w-9 rounded-md" />
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <Skel className="h-3 w-28" />
+                          <Skel className="h-2.5 w-14" />
+                        </div>
+                        <Skel className="h-3 w-8" />
+                      </div>
+                    ))
+                  : nfts.slice(0, 4).map((n) => (
                   <Link
                     key={n.address}
                     to={paths.token(n.address)}
@@ -613,7 +768,7 @@ export function AddressDetailPage() {
                     <span className="text-[11px] font-semibold text-ink-700">×{n.count}</span>
                   </Link>
                 ))}
-                {!data.nfts.length && (
+                {!nftsBoot && !nfts.length && (
                   <div className="py-8 text-center text-[12px] text-ink-400">No NFTs</div>
                 )}
               </div>
@@ -623,10 +778,18 @@ export function AddressDetailPage() {
 
         {/* right sidebar */}
         <aside className="min-w-0 space-y-3">
+          {profileBoot || seriesBoot ? (
+            <div className="card min-w-0 p-3">
+              <div className="text-[11px] font-semibold text-ink-700">Address Summary</div>
+              <Skel className="mt-2 h-5 w-28" />
+              <Skel className="mt-2 h-3 w-36" />
+              <Skel className="mt-3 h-[52px] w-full" />
+            </div>
+          ) : (
           <div className="card min-w-0 p-3">
             <div className="text-[11px] font-semibold text-ink-700">Address Summary</div>
             <div className="mt-1 truncate text-[20px] font-semibold tracking-tight text-ink-900">
-              {usd(data.netWorth)}
+              {usd(netWorth)}
             </div>
             {change24h ? (
               <div
@@ -644,9 +807,27 @@ export function AddressDetailPage() {
             )}
             <NetSpark series={spark} />
           </div>
+          )}
 
-          <DonutChart title="Portfolio Distribution" slices={data.portfolio} colors={DONUT} />
+          {tokensBoot || profileBoot ? (
+            <div className="card p-3">
+              <div className="panel-title mb-2">Portfolio Distribution</div>
+              <div className="flex items-center gap-3">
+                <Skel className="h-24 w-24 shrink-0 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skel className="h-3 w-full" />
+                  <Skel className="h-3 w-4/5" />
+                  <Skel className="h-3 w-3/5" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <DonutChart title="Portfolio Distribution" slices={portfolio} colors={DONUT} />
+          )}
 
+          {tokensBoot || profileBoot ? (
+            <SideBlockSkel title="Token Balances (Top 5)" />
+          ) : (
           <div className="card p-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[11px] font-semibold text-ink-700">
@@ -661,19 +842,7 @@ export function AddressDetailPage() {
               </button>
             </div>
             <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2 text-[11px]">
-                <span className="flex items-center gap-1.5 text-ink-600">
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-sky-100 text-[9px] font-bold text-sky-700">
-                    $
-                  </span>
-                  USDC
-                </span>
-                <span className="text-right">
-                  <span className="block font-medium text-ink-800">{usdc(data.nativeUsdc)}</span>
-                  <span className="text-[10px] text-ink-400">{usd(data.nativeUsdc)}</span>
-                </span>
-              </div>
-              {data.tokens.slice(0, 4).map((t) => (
+              {holdings.slice(0, 5).map((t) => (
                 <div key={t.address} className="flex items-center justify-between gap-2 text-[11px]">
                   <span className="flex min-w-0 items-center gap-1.5 text-ink-600">
                     <TokenIcon
@@ -685,43 +854,52 @@ export function AddressDetailPage() {
                     <span className="truncate">{t.symbol || shortHash(t.address)}</span>
                   </span>
                   <span className="shrink-0 text-right">
-                    <span className="block font-medium text-ink-800">{compact(t.balance)}</span>
+                    <span className="block font-medium text-ink-800">
+                      {t.type === "native" ? usdc(t.balance) : compact(t.balance)}
+                    </span>
                     <span className="text-[10px] text-ink-400">
                       {t.valueUsd > 0 ? usd(t.valueUsd) : "—"}
                     </span>
                   </span>
                 </div>
               ))}
+              {!holdings.length && (
+                <div className="py-4 text-center text-[11px] text-ink-400">No tokens</div>
+              )}
             </div>
           </div>
+          )}
 
+          {profileBoot ? (
+            <SideBlockSkel title="More Info" rows={5} />
+          ) : (
           <div className="card p-3 text-[11px]">
             <div className="mb-2 text-[11px] font-semibold text-ink-700">More Info</div>
             <dl className="space-y-1.5 text-ink-500">
               <div className="flex min-w-0 justify-between gap-2">
                 <dt className="shrink-0">Address Label</dt>
-                <dd className="min-w-0 truncate font-medium text-ink-800">{data.name || data.ens || "—"}</dd>
+                <dd className="min-w-0 truncate font-medium text-ink-800">{profile?.name || profile?.ens || "—"}</dd>
               </div>
               <div className="flex min-w-0 justify-between gap-2">
                 <dt className="shrink-0">Type</dt>
                 <dd className="min-w-0 truncate font-medium text-ink-800">
-                  {data.isContract ? "Contract" : "EOA"}
+                  {profile?.isContract ? "Contract" : "EOA"}
                 </dd>
               </div>
               <div className="flex min-w-0 justify-between gap-2">
                 <dt className="shrink-0">Txns Count</dt>
-                <dd className="min-w-0 truncate font-medium text-ink-800">{compact(data.txCount)}</dd>
+                <dd className="min-w-0 truncate font-medium text-ink-800">{compact((profile?.txCount ?? 0))}</dd>
               </div>
               <div className="flex min-w-0 justify-between gap-2">
                 <dt className="shrink-0">Token Transfers</dt>
                 <dd className="min-w-0 truncate font-medium text-ink-800">
-                  {compact(data.tokenTransferCount)}
+                  {compact((profile?.tokenTransferCount ?? 0))}
                 </dd>
               </div>
               <div className="flex min-w-0 justify-between gap-2">
                 <dt className="shrink-0">Last Active</dt>
                 <dd className="min-w-0 truncate font-medium text-ink-800">
-                  {data.lastActive ? ago(data.lastActive) : "—"}
+                  {lastActive ? ago(lastActive) : "—"}
                 </dd>
               </div>
             </dl>
@@ -734,6 +912,7 @@ export function AddressDetailPage() {
               View on ArcScan →
             </a>
           </div>
+          )}
         </aside>
       </div>
     </div>
