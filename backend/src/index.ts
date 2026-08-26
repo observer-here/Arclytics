@@ -9,7 +9,7 @@ import {
 import { createArcscan } from "./analytics/arcscan";
 import { ingestTokens, ingestTokensRoundRobin } from "./analytics/ingest/tokens";
 import { ingestWallets, maybeIngestWallets } from "./analytics/ingest/wallets";
-import { walletsLive } from "./analytics/walletsLive";
+import { walletsLive, walletsMovers } from "./analytics/walletsLive";
 import { handleAsk } from "./ask";
 import type { Env } from "./lib/env";
 import { corsPreflight, json } from "./lib/http";
@@ -142,6 +142,14 @@ export default {
           ? body.addresses.filter((a): a is string => typeof a === "string")
           : [];
         return json(await walletsLive(env, addresses));
+      }
+
+      if (path === "/v1/wallets/movers" && req.method === "POST") {
+        const body = (await req.json().catch(() => null)) as { addresses?: unknown } | null;
+        const addresses = Array.isArray(body?.addresses)
+          ? body.addresses.filter((a): a is string => typeof a === "string")
+          : [];
+        return json(await walletsMovers(env, addresses));
       }
 
       return json({ error: "not found", path }, 404);

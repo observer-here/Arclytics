@@ -194,6 +194,16 @@ export type WalletLiveRow = {
   spark24h: number[];
 };
 
+export type WalletMover = { address: string; change: number; delta: number };
+
+export type WalletInsights = {
+  netFlow24h: number;
+  avgAgeDays: number;
+  activeRate: number;
+  active24h: number;
+  sample: number;
+};
+
 export async function getWalletLive(
   addresses: string[],
 ): Promise<Record<string, WalletLiveRow>> {
@@ -227,5 +237,39 @@ export async function getWalletLive(
       },
     ] as const),
   );
+}
+
+/** Live ArcScan movers + insights for top wallets (max 20). Not from D1. */
+export async function getWalletMovers(addresses: string[]): Promise<{
+  gainers: WalletMover[];
+  losers: WalletMover[];
+  insights: WalletInsights;
+}> {
+  const res = await fetch(`${API_BASE}/v1/wallets/movers`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ addresses: addresses.slice(0, 20) }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`API /v1/wallets/movers -> ${res.status}${body ? `: ${body}` : ""}`);
+  }
+  const data = (await res.json()) as {
+    gainers?: WalletMover[];
+    losers?: WalletMover[];
+    insights?: WalletInsights;
+  };
+  return {
+    gainers: data.gainers ?? [],
+    losers: data.losers ?? [],
+    insights: data.insights ?? {
+      netFlow24h: 0,
+      avgAgeDays: 0,
+      activeRate: 0,
+      active24h: 0,
+      sample: 0,
+    },
+  };
 }
 

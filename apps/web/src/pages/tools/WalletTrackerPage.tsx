@@ -12,16 +12,14 @@ import {
   type WalletLabel,
 } from "@/config/wallets";
 import { useAsyncData } from "@/hooks/useAsyncData";
-import { getWalletLive, type WalletLiveRow } from "@/libs/api";
+import { getWalletLive, getWalletMovers, type WalletInsights, type WalletLiveRow, type WalletMover } from "@/libs/api";
 import { isWatched, subscribeWatch, toggleWatch as toggleStar } from "@/libs/watchlist";
 import {
   WALLET,
   clearWalletCaches,
-  loadWalletActivity,
   loadWalletList,
   loadWalletStats,
 } from "@/libs/wallets";
-import { explorerUrl } from "@/config/network";
 import { paths } from "@/routes/paths";
 import { compact, pct, shortHash, usd } from "@/utils/format";
 
@@ -51,29 +49,28 @@ function WalletRowSkel() {
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           <Skel className="h-6 w-6 shrink-0 rounded-full" />
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <Skel className="h-3 w-20" />
             <Skel className="h-2.5 w-14" />
           </div>
         </div>
       </td>
       <td className="px-3 py-2"><Skel className="h-5 w-16 rounded-full" /></td>
-      {Array.from({ length: 4 }, (_, i) => (
-        <td key={i} className="px-3 py-2"><Skel className="ml-auto h-3 w-12" /></td>
-      ))}
-      <td className="px-3 py-2" />
-    </tr>
-  );
-}
-
-function ActivityRowSkel() {
-  return (
-    <tr className="border-b border-ink-50">
-      {Array.from({ length: 6 }, (_, i) => (
-        <td key={i} className="px-3 py-2">
-          <Skel className={`h-3 ${i === 5 ? "ml-auto w-12" : "w-16"}`} />
-        </td>
-      ))}
+      <td className="px-3 py-2 text-right">
+        <div className="flex justify-end"><Skel className="h-3 w-14" /></div>
+      </td>
+      <td className="px-3 py-2 text-right">
+        <div className="flex justify-end"><Skel className="h-3 w-24" /></div>
+      </td>
+      <td className="px-3 py-2 text-center">
+        <div className="flex justify-center"><Skel className="h-3 w-8" /></div>
+      </td>
+      <td className="px-3 py-2 text-center">
+        <div className="flex justify-center"><Skel className="h-3 w-14" /></div>
+      </td>
+      <td className="px-3 py-2">
+        <div className="flex justify-center"><Skel className="h-3 w-3" /></div>
+      </td>
     </tr>
   );
 }
@@ -151,23 +148,15 @@ export function WalletTrackerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     deps,
   );
-  const activityLoader = useCallback(
-    () => loadWalletActivity(tracked),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    deps,
-  );
 
   const listQ = useAsyncData(`${WALLET.list}:${trackedKey}`, listLoader, deps);
   const statsQ = useAsyncData(`${WALLET.stats}:${trackedKey}`, statsLoader, deps);
-  const activityQ = useAsyncData(`${WALLET.activity}:${trackedKey}`, activityLoader, deps);
 
   const wallets = listQ.data ?? [];
-  const activity = activityQ.data ?? [];
   const stats = statsQ.data;
   const listBoot = listQ.loading && !listQ.data;
   const statsBoot = statsQ.loading && !statsQ.data;
-  const activityBoot = activityQ.loading && !activityQ.data;
-  const error = listQ.error ?? statsQ.error ?? activityQ.error;
+  const error = listQ.error ?? statsQ.error;
 
   const toggleWatch = (addr: string) => {
     void toggleStar("wallet", addr);
@@ -202,6 +191,16 @@ export function WalletTrackerPage() {
 
   const [live, setLive] = useState<Record<string, WalletLiveRow>>({});
   const [liveLoading, setLiveLoading] = useState(false);
+  const [movers, setMovers] = useState<{
+    gainers: WalletMover[];
+    losers: WalletMover[];
+    insights: WalletInsights;
+  }>({
+    gainers: [],
+    losers: [],
+    insights: { netFlow24h: 0, avgAgeDays: 0, activeRate: 0, active24h: 0, sample: 0 },
+  });
+  const [moversLoading, setMoversLoading] = useState(false);
 
   useEffect(() => {
     if (!visibleKey) {
@@ -228,6 +227,46 @@ export function WalletTrackerPage() {
     };
   }, [visibleKey, reload]);
 
+  const moversKey = wallets
+    .slice(0, 20)
+    .map((w) => w.address)
+    .join(",");
+
+  useEffect(() => {
+    if (!moversKey) {
+      setMovers({
+        gainers: [],
+        losers: [],
+        insights: { netFlow24h: 0, avgAgeDays: 0, activeRate: 0, active24h: 0, sample: 0 },
+      });
+      setMoversLoading(false);
+      return;
+    }
+    const addrs = moversKey.split(",");
+    let cancelled = false;
+    setMoversLoading(true);
+    void getWalletMovers(addrs)
+      .then((data) => {
+        if (!cancelled) setMovers(data);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMovers({
+            gainers: [],
+            losers: [],
+            insights: { netFlow24h: 0, avgAgeDays: 0, activeRate: 0, active24h: 0, sample: 0 },
+          });
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setMoversLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [moversKey, reload]);
+
+  const insights = movers.insights;
   const valueChange =
     stats && stats.valueSpark.length > 1
       ? ((stats.valueSpark.at(-1)! - stats.valueSpark[0]) / Math.max(stats.valueSpark[0], 1)) * 100
@@ -286,10 +325,10 @@ export function WalletTrackerPage() {
         />
         <MetricCard
           label="Active Wallets (24h)"
-          value={compact(stats?.active24h ?? 0)}
+          value={compact(moversLoading && !insights.sample ? (stats?.active24h ?? 0) : insights.active24h)}
           icon={<Icons.Users size={11} />}
           color="#10b981"
-          loading={statsBoot}
+          loading={statsBoot || (moversLoading && !insights.sample)}
         />
         <MetricCard
           label="Transactions (24h)"
@@ -377,7 +416,9 @@ export function WalletTrackerPage() {
                         </td>
                         <td className="px-3 py-2 text-right">
                           {liveLoading && !row ? (
-                            <Skel className="ml-auto h-3 w-24" />
+                            <div className="flex justify-end">
+                              <Skel className="h-3 w-24" />
+                            </div>
                           ) : has24 ? (
                             <div
                               className={`font-medium ${up24 ? "text-emerald-600" : "text-rose-600"}`}
@@ -393,7 +434,9 @@ export function WalletTrackerPage() {
                         <td className="px-3 py-2 text-center text-ink-700">{compact(w.txs24h)}</td>
                         <td className="px-3 py-2 text-center text-ink-600">
                           {liveLoading && !row ? (
-                            <Skel className="mx-auto h-3 w-10" />
+                            <div className="flex justify-center">
+                              <Skel className="h-3 w-14" />
+                            </div>
                           ) : row?.lastActive ? (
                             <TimeAgo ts={row.lastActive} />
                           ) : (
@@ -466,61 +509,6 @@ export function WalletTrackerPage() {
               </div>
             </div>
           </div>
-
-          <div className="card overflow-hidden">
-            <div className="flex items-center justify-between gap-2 border-b border-ink-100 px-3 py-2">
-              <div className="min-w-0 truncate panel-title">Recent Wallet Activity</div>
-              <a href="/explorer/transactions" className="shrink-0 text-[11px] text-arc-600 hover:underline">
-                View all
-              </a>
-            </div>
-            <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-[12px]">
-                <thead>
-                  <tr className="border-b border-ink-100 text-[11px] text-ink-400">
-                    <th className="px-3 py-2 font-medium">Time</th>
-                    <th className="px-3 py-2 font-medium">Wallet</th>
-                    <th className="px-3 py-2 font-medium">Action</th>
-                    <th className="px-3 py-2 font-medium">Protocol / Token</th>
-                    <th className="px-3 py-2 text-right font-medium">Value</th>
-                    <th className="px-3 py-2 text-right font-medium">Details</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activityBoot
-                    ? Array.from({ length: 6 }, (_, i) => <ActivityRowSkel key={i} />)
-                    : activity.map((a) => (
-                    <tr key={a.hash} className="border-b border-ink-50">
-                      <td className="px-3 py-2 text-ink-500">
-                        {a.time ? <TimeAgo ts={a.time} /> : "—"}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-[11px]">{shortHash(a.address)}</td>
-                      <td className="px-3 py-2 text-ink-700">{a.action}</td>
-                      <td className="px-3 py-2 text-ink-600">{a.target}</td>
-                      <td className="px-3 py-2 text-right font-medium">{usd(a.valueUsd)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <a
-                          href={explorerUrl(`/tx/${a.hash}`)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-arc-600 hover:underline"
-                        >
-                          View tx
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                  {!activityBoot && !activity.length && (
-                    <tr>
-                      <td colSpan={6} className="px-3 py-8 text-center text-ink-400">
-                        No recent activity from tracked wallets.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         <div className="min-w-0 space-y-2">
@@ -534,53 +522,59 @@ export function WalletTrackerPage() {
             />
           )}
 
-          {statsBoot ? (
+          {statsBoot || (moversLoading && !movers.gainers.length && !movers.losers.length) ? (
             <SideListSkel title="Top Gainers (24h)" />
           ) : (
           <div className="card p-3">
             <div className="panel-title mb-2">Top Gainers (24h)</div>
             <div className="space-y-2">
-              {(stats?.gainers ?? []).map((g, i) => (
+              {movers.gainers.map((g, i) => (
                 <div key={g.address} className="flex min-w-0 items-center justify-between gap-1.5 text-[12px]">
                   <span className="shrink-0 text-ink-500">{i + 1}.</span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-700">
+                  <Link
+                    to={paths.address(g.address)}
+                    className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-700 hover:text-arc-700"
+                  >
                     {shortHash(g.address)}
-                  </span>
+                  </Link>
                   <span className="shrink-0 font-medium text-emerald-600">{pct(g.change)}</span>
                   <span className="shrink-0 text-ink-500">{usd(g.delta)}</span>
                 </div>
               ))}
-              {!stats?.gainers?.length && (
-                <div className="text-[11px] text-ink-400">No balance history yet.</div>
+              {!movers.gainers.length && (
+                <div className="text-[11px] text-ink-400">No gainers in top wallets.</div>
               )}
             </div>
           </div>
           )}
 
-          {statsBoot ? (
+          {statsBoot || (moversLoading && !movers.gainers.length && !movers.losers.length) ? (
             <SideListSkel title="Top Losers (24h)" />
           ) : (
           <div className="card p-3">
             <div className="panel-title mb-2">Top Losers (24h)</div>
             <div className="space-y-2">
-              {(stats?.losers ?? []).map((g, i) => (
+              {movers.losers.map((g, i) => (
                 <div key={g.address} className="flex min-w-0 items-center justify-between gap-1.5 text-[12px]">
                   <span className="shrink-0 text-ink-500">{i + 1}.</span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-700">
+                  <Link
+                    to={paths.address(g.address)}
+                    className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-700 hover:text-arc-700"
+                  >
                     {shortHash(g.address)}
-                  </span>
+                  </Link>
                   <span className="shrink-0 font-medium text-rose-600">{pct(g.change)}</span>
                   <span className="shrink-0 text-ink-500">{usd(g.delta)}</span>
                 </div>
               ))}
-              {!stats?.losers?.length && (
-                <div className="text-[11px] text-ink-400">No balance history yet.</div>
+              {!movers.losers.length && (
+                <div className="text-[11px] text-ink-400">No losers in top wallets.</div>
               )}
             </div>
           </div>
           )}
 
-          {statsBoot ? (
+          {statsBoot || (moversLoading && !insights.sample) ? (
             <InsightsSkel />
           ) : (
           <div className="card p-3">
@@ -589,22 +583,22 @@ export function WalletTrackerPage() {
               <div className="min-w-0">
                 <div className="text-[10px] text-ink-400">24h Net Flow</div>
                 <div
-                  className={`truncate text-[13px] font-semibold ${(stats?.netFlow24h ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+                  className={`truncate text-[13px] font-semibold ${insights.netFlow24h >= 0 ? "text-emerald-600" : "text-rose-600"}`}
                 >
-                  {(stats?.netFlow24h ?? 0) >= 0 ? "+" : ""}
-                  {usd(stats?.netFlow24h ?? 0)}
+                  {insights.netFlow24h >= 0 ? "+" : ""}
+                  {usd(insights.netFlow24h)}
                 </div>
               </div>
               <div className="min-w-0">
                 <div className="text-[10px] text-ink-400">Avg. Wallet Age</div>
                 <div className="truncate text-[13px] font-semibold text-ink-800">
-                  {(stats?.avgAgeDays ?? 0) > 0 ? `${stats!.avgAgeDays}d` : "—"}
+                  {insights.avgAgeDays > 0 ? `${insights.avgAgeDays}d` : "—"}
                 </div>
               </div>
               <div className="min-w-0">
                 <div className="text-[10px] text-ink-400">Active Rate</div>
                 <div className="truncate text-[13px] font-semibold text-ink-800">
-                  {(stats?.activeRate ?? 0).toFixed(1)}%
+                  {insights.activeRate.toFixed(1)}%
                 </div>
               </div>
             </div>
