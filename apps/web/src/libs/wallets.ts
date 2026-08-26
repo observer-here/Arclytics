@@ -51,18 +51,15 @@ export type WalletStats = {
 };
 
 export const WALLET = {
-  api: "wallet-api-v10",
-  list: "wallet-list-v10",
-  valued: "wallet-valued-v10",
-  stats: "wallet-stats-v10",
-  activity: "wallet-activity-v10",
+  api: "wallet-api-v11",
+  list: "wallet-list-v11",
+  stats: "wallet-stats-v11",
+  activity: "wallet-activity-v11",
 } as const;
 
 const DAY_MS = 86_400_000;
 const ACTIVITY_WALLETS = 8;
 const ACTIVITY_PER = 6;
-/** Live-price top wallets (native USDC + EURC + all priced ERC-20s + last tx). */
-const VALUE_TOP = 25;
 
 function emptyStats(tracked = 0): WalletStats {
   return {
@@ -151,7 +148,7 @@ function emptyRow(addr: string): WalletRow {
   };
 }
 
-/** Full live valuation: native USDC + every priced token (EURC, stables, DeFi, …) + last tx. */
+/** Live lookup for addresses not in the ingest DB. */
 export async function enrichWallet(addr: string, base?: WalletRow): Promise<WalletRow> {
   const [profile, tokens, txs] = await Promise.all([
     loadAddressProfile(addr),
@@ -160,7 +157,7 @@ export async function enrichWallet(addr: string, base?: WalletRow): Promise<Wall
   ]);
   const holdings = mergeHoldings(profile?.nativeUsdc ?? 0, tokens);
   const netWorth = holdings.reduce((s, t) => s + t.valueUsd, 0);
-  const txsTotal = profile?.txCount ?? base?.txsTotal ?? txs.length;
+  const txsTotal = profile?.txCount ?? base?.txsTotal ?? 0;
   return {
     address: addr,
     name: profile?.name || profile?.ens || base?.name,
@@ -170,7 +167,7 @@ export async function enrichWallet(addr: string, base?: WalletRow): Promise<Wall
     change7d: base?.change7d ?? null,
     txs24h: txsIn24h(txs),
     txsTotal,
-    lastActive: txs[0]?.timestamp ?? base?.lastActive ?? null,
+    lastActive: txs[0]?.timestamp ?? null,
     spark24h: base?.spark24h?.length ? base.spark24h : [netWorth],
     spark7d: base?.spark7d?.length ? base.spark7d : [netWorth],
     breakdown: breakdownFromHoldings(holdings),
@@ -193,40 +190,6 @@ function loadApi(extra: string[] = []) {
   });
 }
 
-export function computeStats(wallets: WalletRow[], base?: WalletStats | null): WalletStats {
-  const totalValue = wallets.reduce((s, w) => s + w.netWorth, 0);
-  const top10Value = wallets.slice(0, 10).reduce((s, w) => s + w.netWorth, 0);
-  const active24h = wallets.filter((w) => {
-    if (w.txs24h > 0) return true;
-    if (!w.lastActive) return false;
-    return Date.now() - new Date(w.lastActive).getTime() < DAY_MS;
-  }).length;
-  const walletTxSum = wallets.reduce((s, w) => s + w.txs24h, 0);
-  const txs24h =
-    base?.txs24h != null && base.txs24h > walletTxSum ? base.txs24h : walletTxSum;
-  const portfolio = [
-    { label: "Stablecoins", value: wallets.reduce((s, w) => s + w.breakdown.stable, 0) },
-    { label: "DeFi", value: wallets.reduce((s, w) => s + w.breakdown.defi, 0) },
-    { label: "Tokens", value: wallets.reduce((s, w) => s + w.breakdown.tokens, 0) },
-  ].filter((s) => s.value > 0);
-
-  return {
-    tracked: wallets.length,
-    totalValue,
-    top10Value,
-    active24h,
-    txs24h,
-    netFlow24h: base?.netFlow24h ?? 0,
-    avgAgeDays: base?.avgAgeDays ?? 0,
-    activeRate: wallets.length ? (active24h / wallets.length) * 100 : 0,
-    valueSpark: base?.valueSpark?.length ? base.valueSpark : (wallets[0]?.spark7d ?? []),
-    txSpark: base?.txSpark ?? [],
-    portfolio,
-    gainers: base?.gainers ?? [],
-    losers: base?.losers ?? [],
-  };
-}
-
 function mapActivity(tx: AddressTx, address: string): WalletActivity {
   return {
     hash: tx.hash,
@@ -238,7 +201,7 @@ function mapActivity(tx: AddressTx, address: string): WalletActivity {
   };
 }
 
-/** Fast list — API rows + tracked extras only (independent paint). */
+/** Fast list — API rows + user-tracked extras. */
 export async function loadWalletList(extra: string[] = []): Promise<WalletRow[]> {
   const api = await loadApi(extra);
   const byAddr = new Map(api.items.map((w) => [w.address.toLowerCase(), w] as const));
@@ -258,35 +221,6 @@ export async function loadWalletList(extra: string[] = []): Promise<WalletRow[]>
   return [...byAddr.values()].sort((a, b) => b.netWorth - a.netWorth);
 }
 
-/**
- * Full valuation pass: top wallets + tracked get live token prices (USDC, EURC, …)
- * and last-tx / 24h tx counts. Runs after fast list so UI stays independent.
- */
-export async function loadWalletValued(extra: string[] = []): Promise<WalletRow[]> {
-  const api = await loadApi(extra);
-  const byAddr = new Map(api.items.map((w) => [w.address.toLowerCase(), w] as const));
-
-  const top = [...api.items]
-    .sort((a, b) => b.netWorth - a.netWorth)
-    .slice(0, VALUE_TOP)
-    .map((w) => w.address.toLowerCase());
-  const toValue = [...new Set([...api.extras, ...top])];
-
-  await Promise.all(
-    toValue.map(async (addr) => {
-      const base = byAddr.get(addr);
-      try {
-        byAddr.set(addr, await enrichWallet(addr, base));
-      } catch {
-        if (!byAddr.has(addr)) byAddr.set(addr, emptyRow(addr));
-      }
-    }),
-  );
-
-  return [...byAddr.values()].sort((a, b) => b.netWorth - a.netWorth);
-}
-
-/** Fast stats from API (network txs kept). */
 export async function loadWalletStats(extra: string[] = []): Promise<WalletStats> {
   const api = await loadApi(extra);
   return {
@@ -295,7 +229,6 @@ export async function loadWalletStats(extra: string[] = []): Promise<WalletStats
   };
 }
 
-/** Activity — independent ArcScan fetches. */
 export async function loadWalletActivity(extra: string[] = []): Promise<WalletActivity[]> {
   const api = await loadApi(extra);
   const addrs = [
@@ -324,7 +257,6 @@ export function clearWalletCaches(extra: string[] = []) {
   const k = extraKey(extra);
   clearCache(`${WALLET.api}:${k}`);
   clearCache(`${WALLET.list}:${k}`);
-  clearCache(`${WALLET.valued}:${k}`);
   clearCache(`${WALLET.stats}:${k}`);
   clearCache(`${WALLET.activity}:${k}`);
 }

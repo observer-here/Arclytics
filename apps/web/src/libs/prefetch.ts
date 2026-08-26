@@ -114,7 +114,7 @@ export function prefetchRoute(path: string) {
   }
   if (path === paths.walletTracker) {
     void (async () => {
-      const { WALLET, loadWalletList, loadWalletValued, loadWalletStats, loadWalletActivity } =
+      const { WALLET, loadWalletList, loadWalletStats, loadWalletActivity } =
         await import("@/libs/wallets");
       const { TRACKED_KEY } = await import("@/config/wallets");
       let extra: string[] = [];
@@ -125,7 +125,6 @@ export function prefetchRoute(path: string) {
       }
       const k = extra.join(",");
       prefetch(`${WALLET.list}:${k}`, () => loadWalletList(extra));
-      prefetch(`${WALLET.valued}:${k}`, () => loadWalletValued(extra));
       prefetch(`${WALLET.stats}:${k}`, () => loadWalletStats(extra));
       prefetch(`${WALLET.activity}:${k}`, () => loadWalletActivity(extra));
     })();

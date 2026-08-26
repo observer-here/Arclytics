@@ -15,11 +15,9 @@ import { isWatched, subscribeWatch, toggleWatch as toggleStar } from "@/libs/wat
 import {
   WALLET,
   clearWalletCaches,
-  computeStats,
   loadWalletActivity,
   loadWalletList,
   loadWalletStats,
-  loadWalletValued,
 } from "@/libs/wallets";
 import { explorerUrl } from "@/config/network";
 import { paths } from "@/routes/paths";
@@ -80,7 +78,7 @@ function WalletRowSkel() {
         </div>
       </td>
       <td className="px-3 py-2"><Skel className="h-5 w-16 rounded-full" /></td>
-      {Array.from({ length: 5 }, (_, i) => (
+      {Array.from({ length: 4 }, (_, i) => (
         <td key={i} className="px-3 py-2"><Skel className="ml-auto h-3 w-12" /></td>
       ))}
       <td className="px-3 py-2" />
@@ -179,28 +177,17 @@ export function WalletTrackerPage() {
     deps,
   );
 
-  const valuedLoader = useCallback(
-    () => loadWalletValued(tracked),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    deps,
-  );
-
   const listQ = useAsyncData(`${WALLET.list}:${trackedKey}`, listLoader, deps);
-  const valuedQ = useAsyncData(`${WALLET.valued}:${trackedKey}`, valuedLoader, deps);
   const statsQ = useAsyncData(`${WALLET.stats}:${trackedKey}`, statsLoader, deps);
   const activityQ = useAsyncData(`${WALLET.activity}:${trackedKey}`, activityLoader, deps);
 
-  // API rows first; live token prices + last tx fill in when valued pass completes.
-  const wallets = valuedQ.data ?? listQ.data ?? [];
+  const wallets = listQ.data ?? [];
   const activity = activityQ.data ?? [];
-  const stats = useMemo(() => {
-    if (valuedQ.data?.length) return computeStats(valuedQ.data, statsQ.data);
-    return statsQ.data ?? undefined;
-  }, [valuedQ.data, statsQ.data]);
-  const listBoot = listQ.loading && !listQ.data && !valuedQ.data;
-  const statsBoot = statsQ.loading && !statsQ.data && !valuedQ.data;
+  const stats = statsQ.data;
+  const listBoot = listQ.loading && !listQ.data;
+  const statsBoot = statsQ.loading && !statsQ.data;
   const activityBoot = activityQ.loading && !activityQ.data;
-  const error = listQ.error ?? statsQ.error ?? activityQ.error ?? valuedQ.error;
+  const error = listQ.error ?? statsQ.error ?? activityQ.error;
 
   const toggleWatch = (addr: string) => {
     void toggleStar("wallet", addr);
@@ -331,9 +318,8 @@ export function WalletTrackerPage() {
                     <th className="px-3 py-2.5 font-medium">Label</th>
                     <th className="px-3 py-2.5 text-right font-medium">Net Worth</th>
                     <th className="px-3 py-2.5 text-right font-medium">24h</th>
-                    <th className="px-3 py-2.5 text-right font-medium">7D</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Txns (24h)</th>
-                    <th className="px-3 py-2.5 text-right font-medium">Last Active</th>
+                    <th className="px-3 py-2.5 text-center font-medium">24h Txns</th>
+                    <th className="px-3 py-2.5 text-center font-medium">Last Active</th>
                     <th className="w-8 px-3 py-2.5" />
                   </tr>
                 </thead>
@@ -344,7 +330,6 @@ export function WalletTrackerPage() {
                     const rank = (page - 1) * pageSize + i + 1;
                     const starred = rev >= 0 && isWatched("wallet", w.address);
                     const up24 = (w.change24h ?? 0) >= 0;
-                    const up7 = (w.change7d ?? 0) >= 0;
                     return (
                       <tr key={w.address} className="border-b border-ink-50 hover:bg-ink-50/60">
                         <td className="px-3 py-2 text-ink-400">{rank}</td>
@@ -383,14 +368,8 @@ export function WalletTrackerPage() {
                           </div>
                           <TrendSpark series={w.spark24h} up={up24} />
                         </td>
-                        <td className="px-3 py-2 text-right">
-                          <div className={`font-medium ${up7 ? "text-emerald-600" : "text-rose-600"}`}>
-                            {pct(w.change7d ?? undefined) ?? "—"}
-                          </div>
-                          <TrendSpark series={w.spark7d} up={up7} />
-                        </td>
-                        <td className="px-3 py-2 text-right text-ink-700">{compact(w.txs24h)}</td>
-                        <td className="px-3 py-2 text-right text-ink-500">
+                        <td className="px-3 py-2 text-center text-ink-700">{compact(w.txs24h)}</td>
+                        <td className="px-3 py-2 text-center text-ink-600">
                           {w.lastActive ? ago(w.lastActive) : "—"}
                         </td>
                         <td className="px-3 py-2">

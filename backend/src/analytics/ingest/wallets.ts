@@ -1,5 +1,5 @@
 import { addresses, CURATED_TOKENS, RESERVE_USD } from "@arclytics/chain";
-import type { Arcscan, PageParams } from "../arcscan";
+import type { Arcscan } from "../arcscan";
 import { getMeta, getTokens, saveWallets, setMeta } from "../db";
 import type { Env } from "../../lib/env";
 
@@ -30,10 +30,11 @@ type WalletRow = {
 };
 
 const TOP_N = 100;
-const SCAN_TOKENS = 24;
-const VALUE_N = 50;
-const DAY_MS = 86_400_000;
+const SCAN_TOKENS = 37;
+const SCAN_TOKENS_MAX = 60;
+const VALUE_N = 100;
 const USDC = addresses.usdc.toLowerCase();
+const DAY_MS = 86_400_000;
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -72,15 +73,14 @@ function bucket(
   return "tokens";
 }
 
-function categoryOf(addr: string) {
-  return CURATED_TOKENS.find((t) => t.address.toLowerCase() === addr)?.category ?? "";
+function categoryOf(addr: string, feedMap?: Map<string, string>) {
+  const curated = CURATED_TOKENS.find((t) => t.address.toLowerCase() === addr)?.category;
+  if (curated) return curated;
+  return feedMap?.get(addr) ?? "";
 }
 
 async function holdersForToken(arc: Arcscan, tokenAddr: string, decimals: number) {
-  const batch = await arc.tokenHolders(tokenAddr).catch(() => ({
-    items: [] as Array<Record<string, unknown>>,
-    nextPageParams: null as PageParams,
-  }));
+  const batch = await arc.tokenHolders(tokenAddr).catch(() => ({ items: [], nextPageParams: null }));
   const rows: Array<{ addr: string; amount: number }> = [];
   for (const item of batch.items ?? []) {
     const addrObj = item.address as { hash?: string; is_contract?: boolean } | undefined;
@@ -93,15 +93,15 @@ async function holdersForToken(arc: Arcscan, tokenAddr: string, decimals: number
   return rows;
 }
 
-/** Native USDC + every ERC-20 that has a price (token feed, peg, or ArcScan exchange_rate). */
 async function valuePortfolio(
   arc: Arcscan,
   addr: string,
   priceMap: Record<string, number>,
+  feedMap: Map<string, string>,
 ): Promise<Capital & { native: number }> {
   const [profile, tokenPage] = await Promise.all([
     arc.address(addr).catch(() => null),
-    arc.addressTokens(addr).catch(() => ({ items: [] as Array<Record<string, unknown>> })),
+    arc.addressTokens(addr).catch(() => ({ items: [] })),
   ]);
   const native = parseAmt(profile?.coin_balance);
   const cap: Capital & { native: number } = {
@@ -131,10 +131,10 @@ async function valuePortfolio(
         : null);
     if (!(price != null && price > 0)) continue;
     const usd = amount * price;
-    if (!(usd > 0) || usd > 100_000_000) continue;
+    if (!(usd > 0)) continue;
     const key = bucket(
       tokenAddr,
-      categoryOf(tokenAddr),
+      categoryOf(tokenAddr, feedMap),
       String(tok.symbol ?? "").toUpperCase(),
     );
     cap.total += usd;
@@ -156,24 +156,24 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
     if (priceMap[a] == null && t.pegUsd) priceMap[a] = RESERVE_USD[a] ?? 1;
   }
 
-  const curatedAddrs = new Set(CURATED_TOKENS.map((t) => t.address.toLowerCase()));
   const fromFeed = [...items]
-    .filter((t) => {
-      const addr = t.address.toLowerCase();
-      const price = priceMap[addr] ?? 0;
-      if (!(price > 0)) return false;
-      if (curatedAddrs.has(addr)) return true;
-      const mcap = t.marketCap ?? 0;
-      return mcap > 0 && mcap < 5_000_000_000;
-    })
+    .filter((t) => (priceMap[t.address.toLowerCase()] ?? 0) > 0)
     .sort((a, b) => (b.marketCap ?? b.interest ?? 0) - (a.marketCap ?? a.interest ?? 0));
+
+  const pricedCount = new Set([
+    ...CURATED_TOKENS.filter((t) => (priceMap[t.address.toLowerCase()] ?? 0) > 0).map((t) =>
+      t.address.toLowerCase(),
+    ),
+    ...fromFeed.map((t) => t.address.toLowerCase()),
+  ]).size;
+  const scanLimit = Math.min(SCAN_TOKENS_MAX, Math.max(SCAN_TOKENS, pricedCount));
 
   const scanList: TokenFeed[] = [];
   for (const t of CURATED_TOKENS) {
     const addr = t.address.toLowerCase();
     const price = priceMap[addr] ?? 0;
     if (!(price > 0)) continue;
-    if (scanList.length >= SCAN_TOKENS) break;
+    if (scanList.length >= scanLimit) break;
     scanList.push({
       address: t.address,
       symbol: "",
@@ -183,9 +183,14 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
     });
   }
   for (const t of fromFeed) {
-    if (scanList.length >= SCAN_TOKENS) break;
+    if (scanList.length >= scanLimit) break;
     if (scanList.some((x) => x.address.toLowerCase() === t.address.toLowerCase())) continue;
     scanList.push(t);
+  }
+
+  const feedMap = new Map<string, string>();
+  for (const t of items) {
+    if (t.category) feedMap.set(t.address.toLowerCase(), String(t.category));
   }
 
   const capital = new Map<string, Capital>();
@@ -216,7 +221,7 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
 
     for (const h of holders) {
       const usd = h.amount * price;
-      if (!(usd > 0) || usd > 100_000_000) continue;
+      if (!(usd > 0)) continue;
       const prev = capital.get(h.addr) ?? { total: 0, stable: 0, defi: 0, tokens: 0, usdc: 0 };
       prev.total += usd;
       prev[key] += usd;
@@ -236,19 +241,16 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
   for (let i = 0; i < ranked.length; i++) {
     const [addr, rough] = ranked[i];
     let txsTotal = 0;
-    let lastActive: string | null = null;
-    let name: string | undefined;
     let txs24h = 0;
+    let name: string | undefined;
     let cap = { ...rough };
 
     if (i < VALUE_N) {
-      const [valued, counters, recent, profile] = await Promise.all([
-        valuePortfolio(arc, addr, priceMap),
+      const [valued, counters, profile, recent] = await Promise.all([
+        valuePortfolio(arc, addr, priceMap, feedMap),
         arc.addressCounters(addr).catch(() => null),
-        arc.addressTransactions(addr).catch(() => ({
-          items: [] as Array<Record<string, unknown>>,
-        })),
         arc.address(addr).catch(() => null),
+        arc.addressTransactions(addr).catch(() => ({ items: [] })),
       ]);
       await sleep(280);
 
@@ -272,8 +274,6 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
       }
 
       txsTotal = Number(counters?.transactions_count ?? 0);
-      lastActive =
-        recent.items?.[0]?.timestamp != null ? String(recent.items[0].timestamp) : null;
       name = profile?.name
         ? String(profile.name)
         : profile?.ens_domain_name
@@ -297,7 +297,7 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
       change7d: null,
       txs24h,
       txsTotal,
-      lastActive,
+      lastActive: null,
       spark24h: [netWorth],
       spark7d: [netWorth],
       breakdown: {
@@ -314,11 +314,7 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
 
   const totalValue = wallets.reduce((s, w) => s + w.netWorth, 0);
   const top10Value = wallets.slice(0, 10).reduce((s, w) => s + w.netWorth, 0);
-  const active24h = wallets.filter((w) => {
-    if (w.txs24h > 0) return true;
-    if (!w.lastActive) return false;
-    return Date.now() - new Date(w.lastActive).getTime() < DAY_MS;
-  }).length;
+  const active24h = wallets.filter((w) => w.txs24h > 0).length;
 
   const portfolio = [
     { label: "Stablecoins", value: wallets.reduce((s, w) => s + w.breakdown.stable, 0) },
@@ -326,13 +322,12 @@ export async function ingestWallets(env: Env, arc: Arcscan) {
     { label: "Tokens", value: wallets.reduce((s, w) => s + w.breakdown.tokens, 0) },
   ].filter((s) => s.value > 0);
 
-  const walletTxSum = wallets.reduce((s, w) => s + w.txs24h, 0);
   const stats = {
     tracked: wallets.length,
     totalValue,
     top10Value,
     active24h,
-    txs24h: networkTxs24h > 0 ? networkTxs24h : walletTxSum,
+    txs24h: networkTxs24h,
     netFlow24h: 0,
     avgAgeDays: 0,
     activeRate: wallets.length ? (active24h / wallets.length) * 100 : 0,
