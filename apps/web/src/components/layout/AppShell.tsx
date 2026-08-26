@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Sidebar } from "./Sidebar";
+import { TopBanner } from "./TopBanner";
 import { Topbar } from "./Topbar";
 
 export function AppShell({
@@ -40,7 +41,10 @@ export function AppShell({
       </div>
 
       <div className="min-w-0 flex-1">
-        <Topbar onMenu={() => setOpen(true)} />
+        <div className="sticky top-0 z-20">
+          <TopBanner />
+          <Topbar onMenu={() => setOpen(true)} />
+        </div>
         <div className="px-2 py-3 sm:px-2.5">{children}</div>
       </div>
     </div>
