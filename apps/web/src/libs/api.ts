@@ -186,3 +186,46 @@ export async function getWallets(): Promise<{
   return get("/v1/wallets");
 }
 
+/** Live ArcScan metrics for visible wallets (max 10). Not from D1. */
+export type WalletLiveRow = {
+  lastActive: string | null;
+  change24h: number | null;
+  delta24h: number | null;
+  spark24h: number[];
+};
+
+export async function getWalletLive(
+  addresses: string[],
+): Promise<Record<string, WalletLiveRow>> {
+  const res = await fetch(`${API_BASE}/v1/wallets/live`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ addresses: addresses.slice(0, 10) }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`API /v1/wallets/live -> ${res.status}${body ? `: ${body}` : ""}`);
+  }
+  const data = (await res.json()) as {
+    items?: Array<{
+      address: string;
+      lastActive: string | null;
+      change24h: number | null;
+      delta24h: number | null;
+      spark24h?: number[];
+    }>;
+  };
+  return Object.fromEntries(
+    (data.items ?? []).map((r) => [
+      r.address.toLowerCase(),
+      {
+        lastActive: r.lastActive,
+        change24h: r.change24h,
+        delta24h: r.delta24h,
+        spark24h: r.spark24h ?? [],
+      },
+    ] as const),
+  );
+}
+

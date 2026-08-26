@@ -9,6 +9,7 @@ import {
 import { createArcscan } from "./analytics/arcscan";
 import { ingestTokens, ingestTokensRoundRobin } from "./analytics/ingest/tokens";
 import { ingestWallets, maybeIngestWallets } from "./analytics/ingest/wallets";
+import { walletsLive } from "./analytics/walletsLive";
 import { handleAsk } from "./ask";
 import type { Env } from "./lib/env";
 import { corsPreflight, json } from "./lib/http";
@@ -130,6 +131,17 @@ export default {
           });
         }
         return json(data);
+      }
+
+      if (
+        (path === "/v1/wallets/live" || path === "/v1/wallets/last-active") &&
+        req.method === "POST"
+      ) {
+        const body = (await req.json().catch(() => null)) as { addresses?: unknown } | null;
+        const addresses = Array.isArray(body?.addresses)
+          ? body.addresses.filter((a): a is string => typeof a === "string")
+          : [];
+        return json(await walletsLive(env, addresses));
       }
 
       return json({ error: "not found", path }, 404);

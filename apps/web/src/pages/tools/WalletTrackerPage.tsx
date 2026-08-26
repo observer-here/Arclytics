@@ -4,6 +4,7 @@ import { DonutChart } from "@/components/charts/Charts";
 import { MetricCard } from "@/components/ecosystem/MetricCard";
 import { Icons } from "@/components/shared/Icons";
 import { Skel } from "@/components/shared/Skel";
+import { TimeAgo } from "@/components/shared/TimeAgo";
 import {
   ADDR_RE,
   TRACKED_KEY,
@@ -11,6 +12,7 @@ import {
   type WalletLabel,
 } from "@/config/wallets";
 import { useAsyncData } from "@/hooks/useAsyncData";
+import { getWalletLive, type WalletLiveRow } from "@/libs/api";
 import { isWatched, subscribeWatch, toggleWatch as toggleStar } from "@/libs/watchlist";
 import {
   WALLET,
@@ -21,7 +23,7 @@ import {
 } from "@/libs/wallets";
 import { explorerUrl } from "@/config/network";
 import { paths } from "@/routes/paths";
-import { ago, compact, pct, shortHash, usd } from "@/utils/format";
+import { compact, pct, shortHash, usd } from "@/utils/format";
 
 const DONUT_COLORS = ["#8b5cf6", "#3b82f6", "#f97316", "#10b981", "#94a3b8"];
 
@@ -40,28 +42,6 @@ function writeList(key: string, list: string[]) {
 function walletHue(addr: string) {
   const n = parseInt(addr.slice(2, 8), 16);
   return `hsl(${n % 360} 65% 45%)`;
-}
-
-function TrendSpark({ series, up }: { series: number[]; up: boolean }) {
-  if (series.length < 2) return <span className="text-ink-300">—</span>;
-  const max = Math.max(...series, 1);
-  const line = series
-    .map((v, i) => {
-      const x = (i / (series.length - 1)) * 40;
-      const y = 14 - (v / max) * 10;
-      return `${x},${y}`;
-    })
-    .join(" ");
-  return (
-    <svg width="44" height="16" viewBox="0 0 44 16" className="inline-block">
-      <polyline
-        fill="none"
-        stroke={up ? "#10b981" : "#f43f5e"}
-        strokeWidth="1.5"
-        points={line}
-      />
-    </svg>
-  );
 }
 
 function WalletRowSkel() {
@@ -218,6 +198,35 @@ export function WalletTrackerPage() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const visibleKey = pageRows.map((w) => w.address).join(",");
+
+  const [live, setLive] = useState<Record<string, WalletLiveRow>>({});
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  useEffect(() => {
+    if (!visibleKey) {
+      setLive({});
+      setLiveLoading(false);
+      return;
+    }
+    const addrs = visibleKey.split(",");
+    let cancelled = false;
+    setLiveLoading(true);
+    setLive({});
+    void getWalletLive(addrs)
+      .then((map) => {
+        if (!cancelled) setLive(map);
+      })
+      .catch(() => {
+        if (!cancelled) setLive({});
+      })
+      .finally(() => {
+        if (!cancelled) setLiveLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [visibleKey, reload]);
 
   const valueChange =
     stats && stats.valueSpark.length > 1
@@ -329,7 +338,11 @@ export function WalletTrackerPage() {
                     : pageRows.map((w, i) => {
                     const rank = (page - 1) * pageSize + i + 1;
                     const starred = rev >= 0 && isWatched("wallet", w.address);
-                    const up24 = (w.change24h ?? 0) >= 0;
+                    const row = live[w.address.toLowerCase()];
+                    const delta = row?.delta24h;
+                    const change = row?.change24h;
+                    const up24 = (delta ?? change ?? 0) >= 0;
+                    const has24 = delta != null && change != null;
                     return (
                       <tr key={w.address} className="border-b border-ink-50 hover:bg-ink-50/60">
                         <td className="px-3 py-2 text-ink-400">{rank}</td>
@@ -363,14 +376,29 @@ export function WalletTrackerPage() {
                           {usd(w.netWorth)}
                         </td>
                         <td className="px-3 py-2 text-right">
-                          <div className={`font-medium ${up24 ? "text-emerald-600" : "text-rose-600"}`}>
-                            {pct(w.change24h ?? undefined) ?? "—"}
-                          </div>
-                          <TrendSpark series={w.spark24h} up={up24} />
+                          {liveLoading && !row ? (
+                            <Skel className="ml-auto h-3 w-24" />
+                          ) : has24 ? (
+                            <div
+                              className={`font-medium ${up24 ? "text-emerald-600" : "text-rose-600"}`}
+                            >
+                              {delta! >= 0 ? "+" : ""}
+                              {usd(delta!)} ({change! >= 0 ? "+" : ""}
+                              {change!.toFixed(2)}%)
+                            </div>
+                          ) : (
+                            <span className="text-ink-300">—</span>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-center text-ink-700">{compact(w.txs24h)}</td>
                         <td className="px-3 py-2 text-center text-ink-600">
-                          {w.lastActive ? ago(w.lastActive) : "—"}
+                          {liveLoading && !row ? (
+                            <Skel className="mx-auto h-3 w-10" />
+                          ) : row?.lastActive ? (
+                            <TimeAgo ts={row.lastActive} />
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="px-3 py-2">
                           <button
@@ -463,7 +491,9 @@ export function WalletTrackerPage() {
                     ? Array.from({ length: 6 }, (_, i) => <ActivityRowSkel key={i} />)
                     : activity.map((a) => (
                     <tr key={a.hash} className="border-b border-ink-50">
-                      <td className="px-3 py-2 text-ink-500">{a.time ? ago(a.time) : "—"}</td>
+                      <td className="px-3 py-2 text-ink-500">
+                        {a.time ? <TimeAgo ts={a.time} /> : "—"}
+                      </td>
                       <td className="px-3 py-2 font-mono text-[11px]">{shortHash(a.address)}</td>
                       <td className="px-3 py-2 text-ink-700">{a.action}</td>
                       <td className="px-3 py-2 text-ink-600">{a.target}</td>
