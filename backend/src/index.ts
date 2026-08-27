@@ -8,7 +8,10 @@ import {
 } from "./analytics/ingest/compute";
 import { createArcscan } from "./analytics/arcscan";
 import { ingestTokens, ingestTokensRoundRobin } from "./analytics/ingest/tokens";
-import { ingestWallets, maybeIngestWallets } from "./analytics/ingest/wallets";
+import {
+  ingestWalletsDiscover,
+  refreshWalletsRoundRobin,
+} from "./analytics/ingest/wallets";
 import { walletsLive, walletsMovers } from "./analytics/walletsLive";
 import { handleAsk } from "./ask";
 import type { Env } from "./lib/env";
@@ -43,8 +46,11 @@ export default {
         if (mode === "tokens") {
           return json(await ingestTokens(env, arc));
         }
-        if (mode === "wallets") {
-          return json(await ingestWallets(env, arc));
+        if (mode === "wallets-discover") {
+          return json(await ingestWalletsDiscover(env, arc));
+        }
+        if (mode === "wallets-refresh" || mode === "wallets") {
+          return json(await refreshWalletsRoundRobin(env, arc));
         }
         const result =
           mode === "tvl"
@@ -116,18 +122,13 @@ export default {
 
       if (path === "/v1/wallets" && req.method === "GET") {
         await ensureAnalyticsSchema(env);
-        let data = await getWallets(env);
-        if (!data?.items?.length) {
-          const arc = createArcscan(env);
-          await ingestWallets(env, arc).catch(() => null);
-          data = await getWallets(env);
-        }
+        const data = await getWallets(env);
         if (!data?.items?.length) {
           return json({
             items: [],
             stats: null,
             stale: true,
-            message: "No wallet rankings yet — run POST /v1/ingest?mode=wallets",
+            message: "No wallet rankings yet — run POST /v1/ingest?mode=wallets-discover",
           });
         }
         return json(data);
@@ -144,12 +145,11 @@ export default {
         return json(await walletsLive(env, addresses));
       }
 
-      if (path === "/v1/wallets/movers" && req.method === "POST") {
-        const body = (await req.json().catch(() => null)) as { addresses?: unknown } | null;
-        const addresses = Array.isArray(body?.addresses)
-          ? body.addresses.filter((a): a is string => typeof a === "string")
-          : [];
-        return json(await walletsMovers(env, addresses));
+      if (
+        (path === "/v1/wallets/movers" && req.method === "POST") ||
+        (path === "/v1/wallets/movers" && req.method === "GET")
+      ) {
+        return json(await walletsMovers(env));
       }
 
       return json({ error: "not found", path }, 404);
@@ -165,7 +165,7 @@ export default {
         const arc = createArcscan(env);
         await ingestRoundRobin(env, arc, 3);
         await ingestTokensRoundRobin(env, arc, 3);
-        await maybeIngestWallets(env, arc, 30 * 60_000);
+        await refreshWalletsRoundRobin(env, arc);
       })(),
     );
   },

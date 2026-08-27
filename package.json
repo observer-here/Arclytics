@@ -11,6 +11,8 @@
     "ingest:batch": "pnpm --filter @arclytics/backend ingest:batch",
     "ingest:full": "pnpm --filter @arclytics/backend ingest:full",
     "ingest:tokens": "pnpm --filter @arclytics/backend ingest:tokens",
+    "ingest:wallets": "pnpm --filter @arclytics/backend ingest:wallets",
+    "ingest:wallets:discover": "pnpm --filter @arclytics/backend ingest:wallets:discover",
     "deploy:api": "node scripts/deploy-api.mjs",
     "build": "pnpm --filter @arclytics/web build",
     "vercel-build": "pnpm --filter @arclytics/web build && rm -rf dist && cp -r apps/web/dist dist",

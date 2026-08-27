@@ -239,17 +239,15 @@ export async function getWalletLive(
   );
 }
 
-/** Live ArcScan movers + insights for top wallets (max 20). Not from D1. */
-export async function getWalletMovers(addresses: string[]): Promise<{
+/** Live ArcScan movers + insights for D1 top-100 (Worker reads addresses from D1). */
+export async function getWalletMovers(): Promise<{
   gainers: WalletMover[];
   losers: WalletMover[];
   insights: WalletInsights;
 }> {
   const res = await fetch(`${API_BASE}/v1/wallets/movers`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
+    method: "GET",
     cache: "no-store",
-    body: JSON.stringify({ addresses: addresses.slice(0, 20) }),
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");

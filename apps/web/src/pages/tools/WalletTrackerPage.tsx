@@ -227,25 +227,11 @@ export function WalletTrackerPage() {
     };
   }, [visibleKey, reload]);
 
-  const moversKey = wallets
-    .slice(0, 20)
-    .map((w) => w.address)
-    .join(",");
-
+  // Gainers / losers / insights: Worker loads D1 top-100, then live ArcScan.
   useEffect(() => {
-    if (!moversKey) {
-      setMovers({
-        gainers: [],
-        losers: [],
-        insights: { netFlow24h: 0, avgAgeDays: 0, activeRate: 0, active24h: 0, sample: 0 },
-      });
-      setMoversLoading(false);
-      return;
-    }
-    const addrs = moversKey.split(",");
     let cancelled = false;
     setMoversLoading(true);
-    void getWalletMovers(addrs)
+    void getWalletMovers()
       .then((data) => {
         if (!cancelled) setMovers(data);
       })
@@ -264,7 +250,7 @@ export function WalletTrackerPage() {
     return () => {
       cancelled = true;
     };
-  }, [moversKey, reload]);
+  }, [reload]);
 
   const insights = movers.insights;
   const valueChange =
@@ -380,7 +366,6 @@ export function WalletTrackerPage() {
                     const row = live[w.address.toLowerCase()];
                     const delta = row?.delta24h;
                     const change = row?.change24h;
-                    const up24 = (delta ?? change ?? 0) >= 0;
                     const has24 = delta != null && change != null;
                     return (
                       <tr key={w.address} className="border-b border-ink-50 hover:bg-ink-50/60">
@@ -419,17 +404,22 @@ export function WalletTrackerPage() {
                             <div className="flex justify-end">
                               <Skel className="h-3 w-24" />
                             </div>
-                          ) : has24 ? (
-                            <div
-                              className={`font-medium ${up24 ? "text-emerald-600" : "text-rose-600"}`}
-                            >
-                              {delta! >= 0 ? "+" : ""}
-                              {usd(delta!)} ({change! >= 0 ? "+" : ""}
-                              {change!.toFixed(2)}%)
-                            </div>
-                          ) : (
-                            <span className="text-ink-300">—</span>
-                          )}
+                          ) : (() => {
+                            const d = has24 ? (delta ?? 0) : 0;
+                            const c = has24 ? (change ?? 0) : 0;
+                            const flat = !has24 || Math.abs(d) < 1e-9;
+                            return (
+                              <div
+                                className={`font-medium ${
+                                  flat ? "text-ink-400" : d >= 0 ? "text-emerald-600" : "text-rose-600"
+                                }`}
+                              >
+                                {flat
+                                  ? "+$0.00 (+0.00%)"
+                                  : `${d >= 0 ? "+" : ""}${usd(d)} (${c >= 0 ? "+" : ""}${c.toFixed(2)}%)`}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-3 py-2 text-center text-ink-700">{compact(w.txs24h)}</td>
                         <td className="px-3 py-2 text-center text-ink-600">
@@ -578,7 +568,14 @@ export function WalletTrackerPage() {
             <InsightsSkel />
           ) : (
           <div className="card p-3">
-            <div className="panel-title mb-2">Tracked Wallet Insights</div>
+            <div className="mb-2 flex items-baseline justify-between gap-2">
+              <div className="panel-title">Tracked Wallet Insights</div>
+              {insights.sample > 0 ? (
+                <span className="shrink-0 text-[10px] text-ink-400">
+                  Top {insights.sample} · live
+                </span>
+              ) : null}
+            </div>
             <div className="grid min-w-0 grid-cols-3 gap-2 text-center">
               <div className="min-w-0">
                 <div className="text-[10px] text-ink-400">24h Net Flow</div>
