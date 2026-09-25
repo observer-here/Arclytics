@@ -23,8 +23,8 @@ database_id = "9d64b1c5-143b-4f77-b7ed-9ed70c100dfd"
 crons = ["*/10 * * * *"]
 
 [vars]
-ARCSCAN_BASE = "https://explorer.testnet.arc.io/api/v2"
-ARCSCAN_STATS = "https://explorer.testnet.arc.io/stats-service/api/v1"
+ARCSCAN_BASE = "https://testnet.arcscan.app/api/v2"
+ARCSCAN_STATS = "https://testnet.arcscan.app/stats-service/api/v1"
 ARC_RPC = "https://rpc.testnet.arc.network"
 
 [observability]

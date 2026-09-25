@@ -11,7 +11,7 @@ export const arcTestnet = {
     default: {
       name: "ArcScan",
       url: "https://testnet.arcscan.app",
-      api: "https://explorer.testnet.arc.io/api/v2",
+      api: "https://testnet.arcscan.app/api/v2",
     },
   },
   testnet: true,

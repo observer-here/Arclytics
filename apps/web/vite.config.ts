@@ -18,7 +18,7 @@ export default defineConfig({
         rewrite: (p) => p.replace(/^\/api/, ""),
       },
       "/arcscan": {
-        target: "https://explorer.testnet.arc.io",
+        target: "https://testnet.arcscan.app",
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/arcscan/, "/api/v2"),
       },
@@ -28,7 +28,7 @@ export default defineConfig({
         rewrite: () => "/",
       },
       "/arcstats": {
-        target: "https://explorer.testnet.arc.io",
+        target: "https://testnet.arcscan.app",
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/arcstats/, "/stats-service/api/v1"),
       },
