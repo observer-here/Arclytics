@@ -1,10 +1,5 @@
-const BASE =
-  import.meta.env.VITE_ARCSCAN_BASE_URL ??
-  (import.meta.env.DEV ? "/arcscan" : "https://testnet.arcscan.app/api/v2");
-
-const STATS =
-  import.meta.env.VITE_ARCSCAN_STATS_URL ??
-  (import.meta.env.DEV ? "/arcstats" : "https://testnet.arcscan.app/stats-service/api/v1");
+const BASE = import.meta.env.VITE_ARCSCAN_BASE_URL ?? "/arcscan";
+const STATS = import.meta.env.VITE_ARCSCAN_STATS_URL ?? "/arcstats";
 
 export type PageParams = Record<string, string | number> | null;
 

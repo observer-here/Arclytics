@@ -190,7 +190,7 @@ export async function liveBrief(env: Env) {
 }
 
 function rpcUrl(env: Env) {
-  return (env.ARC_RPC || "https://rpc.testnet.arc.network").replace(/\/$/, "");
+  return (env.ARC_RPC || "https://rpc.testnet.arc.io").replace(/\/$/, "");
 }
 
 async function getJson(url: string, label: string) {

@@ -7,7 +7,7 @@ export const details = {
   links: {
     website: "https://flowswap.xyz",
     explorer:
-      "https://testnet.arcscan.app/address/0x49f9636FE15883e16d5E356A4eA08C9Fe6BC219B",
+      "https://explorer.testnet.arc.io/address/0x49f9636FE15883e16d5E356A4eA08C9Fe6BC219B",
   },
   sources: ["ArcScan"],
 };

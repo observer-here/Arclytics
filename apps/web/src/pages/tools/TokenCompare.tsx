@@ -1090,7 +1090,7 @@ export function TokenCompare() {
                       <td className="px-2 py-1.5">
                         {r.hash ? (
                           <a
-                            href={`https://testnet.arcscan.app/tx/${r.hash}`}
+                            href={`https://explorer.testnet.arc.io/tx/${r.hash}`}
                             target="_blank"
                             rel="noreferrer"
                             className="font-mono text-[10px] text-arc-600"

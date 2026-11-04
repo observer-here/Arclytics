@@ -117,7 +117,7 @@ for (const t of tokens) {
   let symbol = "";
 
   try {
-    const j = await fetch(`https://testnet.arcscan.app/api/v2/tokens/${t.address}`).then((r) => r.json());
+    const j = await fetch(`https://explorer.testnet.arc.io/api/v2/tokens/${t.address}`).then((r) => r.json());
     if (j.icon_url) url = String(j.icon_url);
     symbol = String(j.symbol ?? "");
   } catch {

@@ -1,6 +1,6 @@
 const RPC =
   import.meta.env.VITE_ARC_RPC_URL ??
-  (import.meta.env.DEV ? "/arcrpc" : "https://rpc.testnet.arc.network");
+  (import.meta.env.DEV ? "/arcrpc" : "https://rpc.testnet.arc.io");
 
 type RpcTx = {
   hash: string;
@@ -222,7 +222,7 @@ export function subscribeRpcBlocks(
   onBlock: (block: LiveBlock) => void,
   onStatus?: (connected: boolean) => void,
 ): () => void {
-  const WS = import.meta.env.VITE_ARC_WS_URL ?? "wss://rpc.testnet.arc.network";
+  const WS = import.meta.env.VITE_ARC_WS_URL ?? "wss://rpc.testnet.arc.io";
   let ws: WebSocket | null = null;
   let closed = false;
   let retry = 0;

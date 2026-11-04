@@ -908,7 +908,7 @@ export function WalletCompare() {
                       <td className="px-2 py-1.5 text-right">{usd(t.valueUsdc)}</td>
                       <td className="px-2 py-1.5">
                         <a
-                          href={`https://testnet.arcscan.app/tx/${t.hash}`}
+                          href={`https://explorer.testnet.arc.io/tx/${t.hash}`}
                           target="_blank"
                           rel="noreferrer"
                           className="font-mono text-[10px] text-arc-600"

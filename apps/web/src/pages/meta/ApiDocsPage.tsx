@@ -5,9 +5,9 @@ export function ApiDocsPage() {
       <div className="card p-5 text-sm">
         <p>
           Primary:{" "}
-          <span className="font-mono text-arc-700">https://testnet.arcscan.app/api/v2</span>
+          <span className="font-mono text-arc-700">https://explorer.testnet.arc.io/api/v2</span>
         </p>
-        <p className="text-ink-500">Arclytics reads ArcScan directly from the browser (via Vite proxy in dev).</p>
+        <p className="text-ink-500">Arclytics reads the explorer API through /arcscan and /arcstats.</p>
       </div>
     </div>
   );

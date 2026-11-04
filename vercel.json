@@ -5,7 +5,15 @@
   "outputDirectory": "apps/web/dist",
   "rewrites": [
     {
-      "source": "/((?!assets/).*)",
+      "source": "/arcscan/:path*",
+      "destination": "https://explorer.testnet.arc.io/api/v2/:path*"
+    },
+    {
+      "source": "/arcstats/:path*",
+      "destination": "https://explorer.testnet.arc.io/stats-service/api/v1/:path*"
+    },
+    {
+      "source": "/((?!assets/|arcscan/|arcstats/).*)",
       "destination": "/index.html"
     }
   ],

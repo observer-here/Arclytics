@@ -18,17 +18,17 @@ export default defineConfig({
         rewrite: (p) => p.replace(/^\/api/, ""),
       },
       "/arcscan": {
-        target: "https://testnet.arcscan.app",
+        target: "https://explorer.testnet.arc.io",
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/arcscan/, "/api/v2"),
       },
       "/arcrpc": {
-        target: "https://rpc.testnet.arc.network",
+        target: "https://rpc.testnet.arc.io",
         changeOrigin: true,
         rewrite: () => "/",
       },
       "/arcstats": {
-        target: "https://testnet.arcscan.app",
+        target: "https://explorer.testnet.arc.io",
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/arcstats/, "/stats-service/api/v1"),
       },

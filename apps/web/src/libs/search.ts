@@ -7,7 +7,7 @@ import { paths } from "@/routes/paths";
 import { shortHash } from "@/utils/format";
 
 export const TOKENS_CACHE_KEY = "tokens-api-v3";
-const ARCSCAN = "https://testnet.arcscan.app";
+const ARCSCAN = "https://explorer.testnet.arc.io";
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const TX_HASH_RE = /^0x[a-fA-F0-9]{64}$/;
 const BLOCK_RE = /^\d{1,12}$/;

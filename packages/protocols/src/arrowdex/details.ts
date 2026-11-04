@@ -9,7 +9,7 @@ export const details = {
     website: "https://arrowdex.vercel.app",
     docs: "https://arrowdexdocs.vercel.app",
     explorer:
-      "https://testnet.arcscan.app/address/0x847ee9aA98A05d371Be291A95A087FA02E77A416",
+      "https://explorer.testnet.arc.io/address/0x847ee9aA98A05d371Be291A95A087FA02E77A416",
   },
   sources: ["ArcScan", "Arrow DEX"],
 };
